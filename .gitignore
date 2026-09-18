@@ -1,0 +1,34 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+
+# Secrets and local configuration
+.env
+.env.local
+appsettings.Local.json
+appsettings.*.Local.json
+
+# Local uploads written by the LocalDisk file storage provider
+App_Data/
+src/DmOrder.Api/App_Data/
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.swp
+
+# Test output
+TestResults/
+coverage/
+*.trx
+*.coverage
+
+# OS
+Thumbs.db
+.DS_Store

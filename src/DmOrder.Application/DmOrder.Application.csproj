@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!--
+      Application references EF Core abstractions (not Npgsql, not a DbContext implementation) so that
+      use cases can project IQueryable straight into DTOs. See docs/ADR/0002-efcore-in-application.md.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DmOrder.Domain\DmOrder.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
