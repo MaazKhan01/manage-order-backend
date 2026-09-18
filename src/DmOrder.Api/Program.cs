@@ -6,6 +6,7 @@ using DmOrder.Api.Middleware;
 using DmOrder.Application;
 using DmOrder.Application.Common.Interfaces;
 using DmOrder.Infrastructure;
+using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
@@ -57,10 +58,8 @@ builder.Services.AddApiVersioning(options =>
     options.ApiVersionReader = new UrlSegmentApiVersionReader();
 });
 
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(AuthorizationPolicies.Seller, policy => policy.RequireRole(ApplicationRoles.Seller))
-    .AddPolicy(AuthorizationPolicies.Admin, policy => policy.RequireRole(ApplicationRoles.Admin));
+builder.Services.AddApiAuthentication(builder.Configuration);
+builder.Services.AddApiRateLimiting();
 
 var frontendOrigins = builder.Configuration
     .GetSection(FrontendOptions.SectionName)
@@ -78,6 +77,18 @@ builder.Services.AddHealthChecks()
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// --- Startup work ----------------------------------------------------------
+// Roles must exist before anyone can register. The admin account is only created when both
+// SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are supplied — there is no default admin password.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+    await seeder.SeedAsync(
+        builder.Configuration["Seed:AdminEmail"],
+        builder.Configuration["Seed:AdminPassword"],
+        CancellationToken.None);
+}
 
 // --- Pipeline --------------------------------------------------------------
 // Order matters: exception handling first so everything below it produces a consistent problem
@@ -97,6 +108,7 @@ else
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -111,7 +123,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 
 app.MapApiEndpoints();
 
-app.Run();
+await app.RunAsync();
 
 /// <summary>Exposed so the integration test host can reference the entry point assembly.</summary>
 public partial class Program;

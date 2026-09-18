@@ -108,7 +108,7 @@ The dependency direction is enforced by project references alone — `DmOrder.Do
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Foundation: projects, EF Core, logging, error handling, versioning, health | Done |
-| 2 | Authentication, roles, JWT + refresh tokens | Not started |
+| 2 | Authentication, roles, JWT + rotating refresh tokens, BFF cookies | Done |
 | 3 | Store, slug, publishing, branding, theme | Not started |
 | 4 | Categories, products, images | Not started |
 | 5 | Custom fields, public order submission | Not started |

@@ -1,12 +1,14 @@
 using DmOrder.Application.Common.Interfaces;
+using DmOrder.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace DmOrder.Infrastructure.Persistence;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
-    : DbContext(options), IAppDbContext
+    : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options), IAppDbContext
 {
-    // DbSets are added here as entities are introduced (store, products, orders, ...).
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

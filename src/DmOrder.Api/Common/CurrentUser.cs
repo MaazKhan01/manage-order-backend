@@ -1,17 +1,21 @@
 using System.Security.Claims;
 using DmOrder.Application.Common.Interfaces;
+using DmOrder.Domain.Identity;
 
 namespace DmOrder.Api.Common;
 
-/// <summary>Reads the caller's identity from the current request's claims principal.</summary>
+/// <summary>
+/// Reads the caller's identity from the current request's claims principal, using the explicit claim
+/// names this application issues (see <see cref="AppClaimTypes"/>) rather than framework-mapped ones.
+/// </summary>
 public sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICurrentUser
 {
     private ClaimsPrincipal? Principal => httpContextAccessor.HttpContext?.User;
 
     public Guid? UserId =>
-        Guid.TryParse(Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        Guid.TryParse(Principal?.FindFirstValue(AppClaimTypes.UserId), out var id) ? id : null;
 
-    public string? Email => Principal?.FindFirstValue(ClaimTypes.Email);
+    public string? Email => Principal?.FindFirstValue(AppClaimTypes.Email);
 
     public bool IsAuthenticated => Principal?.Identity?.IsAuthenticated ?? false;
 

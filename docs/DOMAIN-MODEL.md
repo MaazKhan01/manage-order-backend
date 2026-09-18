@@ -22,18 +22,32 @@ Everything tenant-owned carries `StoreId` and implements `ITenantOwned`.
 
 ## Identity
 
-### `User`
-ASP.NET Core Identity user. Owns authentication, not business data.
+> These two live in **`DmOrder.Infrastructure/Identity`**, not in the Domain project, because they
+> derive from ASP.NET Core Identity types. Domain refers to users by `Guid` only and stays
+> dependency-free. See [ADR 0008](ADR/0008-identity-lives-in-infrastructure.md).
+>
+> Implemented in Phase 2. Table names: `users`, `roles`, `refresh_tokens`, plus Identity's own
+> `AspNetUserRoles`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoleClaims`.
 
-`Id`, `Email` (unique, normalised), `PasswordHash`, `Role` (`Seller` | `Admin`), `IsActive`, audit fields.
+### `ApplicationUser`
+`Id`, `Email` (unique, normalised), `PasswordHash`, `DisplayName`, `IsActive`, `CreatedAt`,
+`UpdatedAt`, plus Identity's lockout, security-stamp and concurrency columns.
 
-`IsActive` is the admin's lever to suspend an account without deleting anything.
+Roles come from Identity's join table rather than a column, so a user can hold more than one and a
+third role can be added without a migration. `IsActive` is the admin's lever to suspend an account
+without deleting anything; it is checked before the password, so a suspended account stops costing
+password verifications.
 
 ### `RefreshToken`
-`Id`, `UserId`, `TokenHash`, `ExpiresAt`, `RevokedAt?`, `ReplacedByTokenId?`, `FamilyId`, `CreatedByIp`.
+`Id`, `UserId`, `TokenHash` (unique), `FamilyId`, `ExpiresAt`, `CreatedAt`, `RevokedAt?`,
+`RevokedReason?`, `ReplacedByTokenId?`.
 
-Tokens are stored hashed. Rotation on use plus `FamilyId` is what makes reuse of a stolen token
-detectable: replaying a rotated token revokes the entire family.
+Only the SHA-256 hash is stored, so a database leak does not hand over working sessions. Rotation on
+use plus `FamilyId` is what makes reuse of a stolen token detectable: replaying a rotated token revokes
+the entire family, forcing both the real user and the attacker to sign in again.
+
+Indexes: `TokenHash` (unique — hit on every refresh), `FamilyId` (family revocation sweep),
+`(UserId, ExpiresAt)`.
 
 ---
 

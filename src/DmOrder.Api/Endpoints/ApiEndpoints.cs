@@ -4,13 +4,14 @@ using Asp.Versioning.Builder;
 namespace DmOrder.Api.Endpoints;
 
 /// <summary>
-/// Defines the three top-level route groups. Audience is encoded in the URL so that "can an anonymous
+/// Defines the top-level route groups. Audience is encoded in the URL so that "can an anonymous
 /// visitor reach this?" is answerable by reading the path, and so a seller endpoint cannot be left
 /// public by forgetting an attribute.
 ///
-///   /api/v1/public/...  anonymous storefront
-///   /api/v1/seller/...  authenticated seller, scoped to their own store
-///   /api/v1/admin/...   platform owner
+///   /api/v1/public/...   anonymous storefront and auth
+///   /api/v1/account/...  any authenticated user, whatever their role
+///   /api/v1/seller/...   role Seller, scoped to their own store
+///   /api/v1/admin/...    role Admin
 /// </summary>
 public static class ApiEndpoints
 {
@@ -28,6 +29,12 @@ public static class ApiEndpoints
             .AllowAnonymous()
             .WithTags("Public");
 
+        // Authenticated but role-agnostic: a platform admin has a profile too, so gating /me behind the
+        // Seller role would lock admins out of their own account.
+        var accountApi = api.MapGroup("/account")
+            .RequireAuthorization()
+            .WithTags("Account");
+
         var sellerApi = api.MapGroup("/seller")
             .RequireAuthorization(AuthorizationPolicies.Seller)
             .WithTags("Seller");
@@ -38,8 +45,10 @@ public static class ApiEndpoints
 
         // Feature modules register themselves against the group that matches their audience.
         publicApi.MapPlatformEndpoints();
+        publicApi.MapPublicAuthEndpoints();
+        accountApi.MapSellerAccountEndpoints();
 
-        // Referenced so the groups are used; feature endpoints are added in later phases.
+        // Populated from Phase 3 onwards.
         _ = sellerApi;
         _ = adminApi;
 

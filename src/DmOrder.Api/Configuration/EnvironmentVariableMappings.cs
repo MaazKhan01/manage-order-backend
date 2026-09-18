@@ -29,6 +29,8 @@ public static class EnvironmentVariableMappings
         ("PROJECT_SHORT_NAME", "PlatformBranding:ProjectShortName"),
         ("PROJECT_DESCRIPTION", "PlatformBranding:ProjectDescription"),
         ("SUPPORT_EMAIL", "PlatformBranding:SupportEmail"),
+        ("SEED_ADMIN_EMAIL", "Seed:AdminEmail"),
+        ("SEED_ADMIN_PASSWORD", "Seed:AdminPassword"),
     ];
 
     public static IEnumerable<KeyValuePair<string, string?>> Collect()

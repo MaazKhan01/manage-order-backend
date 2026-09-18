@@ -1,9 +1,12 @@
 using DmOrder.Application.Common.Interfaces;
+using DmOrder.Domain.Identity;
 using DmOrder.Infrastructure.Ai;
+using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Persistence;
 using DmOrder.Infrastructure.Persistence.Interceptors;
 using DmOrder.Infrastructure.Services;
 using DmOrder.Infrastructure.Storage;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +22,7 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         AddPersistence(services, configuration);
+        AddIdentity(services, configuration);
         AddFileStorage(services, configuration);
 
         // No AI feature ships in V1; the seam exists so adding one later is a one-line swap.
@@ -50,6 +54,37 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+    }
+
+    private static void AddIdentity(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+
+                // Length is enforced by the request validator (minimum 10). Composition rules mostly
+                // push people towards predictable substitutions, so they are deliberately off.
+                options.Password.RequiredLength = 10;
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+
+                options.Lockout.MaxFailedAccessAttempts = 8;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.AllowedForNewUsers = true;
+            })
+            .AddRoles<ApplicationRole>()
+            .AddEntityFrameworkStores<AppDbContext>();
+
+        services.AddScoped<IUserAccountService, UserAccountService>();
+        services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IdentitySeeder>();
     }
 
     private static void AddFileStorage(IServiceCollection services, IConfiguration configuration)

@@ -14,6 +14,7 @@ Base URL: `{NEXT_PUBLIC_API_BASE_URL}` (local: `http://localhost:5080`).
 | Prefix | Who | Auth |
 |---|---|---|
 | `/api/v1/public/...` | Anyone | None |
+| `/api/v1/account/...` | Any signed-in user | Bearer token, any role |
 | `/api/v1/seller/...` | Store owner | Bearer token, role `Seller`, scoped to the caller's own store |
 | `/api/v1/admin/...` | Platform owner | Bearer token, role `Admin` |
 
@@ -103,17 +104,98 @@ compiling it in.
 
 ---
 
+## Phase 2 — authentication
+
+Tokens are returned to the **Next.js BFF**, which puts them in httpOnly cookies. They never reach
+browser JavaScript. All four public auth routes are rate limited to 10 requests per minute per IP and
+return `429` beyond that.
+
+### `POST /api/v1/public/auth/register`
+
+```json
+{ "email": "sarah@example.com", "password": "at-least-10-chars", "displayName": "Sarah" }
+```
+
+`200` returns an auth payload (below). The new user gets the `Seller` role and no store yet.
+
+`409` if the address cannot be used. The message deliberately does **not** confirm that it is already
+registered — that would make this endpoint an account-enumeration oracle.
+`400` with `errors.password` / `errors.email` / `errors.displayName` for validation failures.
+
+### `POST /api/v1/public/auth/login`
+
+```json
+{ "email": "sarah@example.com", "password": "at-least-10-chars" }
+```
+
+`200` returns an auth payload. `401` for a wrong password, an unknown account, a locked-out account or
+a deactivated one — **byte-identical responses**, so the endpoint cannot be used to discover which
+addresses exist.
+
+### `POST /api/v1/public/auth/refresh`
+
+```json
+{ "refreshToken": "..." }
+```
+
+`200` returns a fresh auth payload and **rotates** the refresh token. `401` when the token is unknown,
+expired or revoked.
+
+Presenting a token that has already been rotated is treated as theft: the entire token family is
+revoked, so the legitimate client is signed out too. That is intended — the server cannot tell which
+holder is the attacker.
+
+### `POST /api/v1/public/auth/logout`
+
+```json
+{ "refreshToken": "..." }
+```
+
+`204` always. Idempotent: logging out twice, or with a token that was never issued, succeeds quietly.
+
+Takes the refresh token rather than requiring a valid access token, so an expired session can still be
+logged out — which is exactly when people try.
+
+### `GET /api/v1/account/me`
+
+Requires a bearer token. Returns the signed-in user read **from the database**, not from the token's
+claims, so a deactivation or a newly created store is reflected immediately.
+
+```json
+{
+  "id": "0199...",
+  "email": "sarah@example.com",
+  "displayName": "Sarah",
+  "roles": ["Seller"],
+  "storeId": null,
+  "hasStore": false
+}
+```
+
+### Auth payload
+
+```json
+{
+  "user": { "id": "0199...", "email": "...", "displayName": "...", "roles": ["Seller"], "storeId": null, "hasStore": false },
+  "accessToken": "eyJ...",
+  "accessTokenExpiresAt": "2026-09-19T12:15:00+00:00",
+  "refreshToken": "base64...",
+  "refreshTokenExpiresAt": "2026-10-03T12:00:00+00:00"
+}
+```
+
+Access token: 15 minutes. Refresh token: 14 days, rotated on every use.
+Claims issued: `sub`, `email`, `role` (repeated), `store_id` (once a store exists), `jti`, `exp`, `nbf`,
+`iss`, `aud`.
+
+---
+
 ## Planned
 
 Listed so the frontend can be designed against the shape, but **not implemented yet**.
 
 | Phase | Method & route | Purpose |
 |---|---|---|
-| 2 | `POST /api/v1/public/auth/register` | Create a seller account |
-| 2 | `POST /api/v1/public/auth/login` | Exchange credentials for tokens |
-| 2 | `POST /api/v1/public/auth/refresh` | Rotate the refresh token |
-| 2 | `POST /api/v1/seller/auth/logout` | Revoke the refresh token |
-| 2 | `GET /api/v1/seller/me` | Current user + store summary |
 | 3 | `POST /api/v1/seller/store` | Create the seller's store |
 | 3 | `GET` `PUT /api/v1/seller/store` | Read / update own store |
 | 3 | `PUT /api/v1/seller/store/theme` | Update theme |
