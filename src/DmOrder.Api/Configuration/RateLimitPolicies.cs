@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace DmOrder.Api.Endpoints;
 
@@ -16,41 +18,78 @@ public static class RateLimitPolicies
     public const string PublicWrite = "public-write";
 }
 
+public sealed class RateLimitingOptions
+{
+    public const string SectionName = "RateLimiting";
+
+    [Range(1, 10_000)]
+    public int AuthPermitLimit { get; set; } = 10;
+
+    [Range(1, 3600)]
+    public int AuthWindowSeconds { get; set; } = 60;
+
+    [Range(1, 10_000)]
+    public int PublicWritePermitLimit { get; set; } = 20;
+
+    [Range(1, 3600)]
+    public int PublicWriteWindowSeconds { get; set; } = 300;
+}
+
 public static class RateLimitingSetup
 {
-    public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
+    public static IServiceCollection AddApiRateLimiting(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
+        services.AddOptions<RateLimitingOptions>()
+            .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
             options.AddPolicy(RateLimitPolicies.Auth, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
+            {
+                var limits = context.RequestServices
+                    .GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+
+                return RateLimitPartition.GetFixedWindowLimiter(
                     ClientKey(context),
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 10,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = limits.AuthPermitLimit,
+                        Window = TimeSpan.FromSeconds(limits.AuthWindowSeconds),
                         QueueLimit = 0,
-                    }));
+                    });
+            });
 
             options.AddPolicy(RateLimitPolicies.PublicWrite, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
+            {
+                var limits = context.RequestServices
+                    .GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+
+                return RateLimitPartition.GetFixedWindowLimiter(
                     ClientKey(context),
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 20,
-                        Window = TimeSpan.FromMinutes(5),
+                        PermitLimit = limits.PublicWritePermitLimit,
+                        Window = TimeSpan.FromSeconds(limits.PublicWriteWindowSeconds),
                         QueueLimit = 0,
-                    }));
+                    });
+            });
         });
 
         return services;
     }
 
     /// <summary>
-    /// Partition by remote IP. Behind a proxy this needs ForwardedHeaders configured, otherwise every
-    /// request looks like it came from the proxy and the limit becomes global — noted in the ADR.
+    /// Partition by client IP.
+    ///
+    /// Behind a reverse proxy this is the proxy's address unless forwarded headers are honoured, which
+    /// would collapse every visitor into one bucket and turn a per-client limit into a global one. That
+    /// is why <c>TRUST_FORWARDED_HEADERS</c> exists — see Program.cs.
     /// </summary>
     private static string ClientKey(HttpContext context) =>
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown";

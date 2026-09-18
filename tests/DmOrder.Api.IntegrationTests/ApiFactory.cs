@@ -2,6 +2,7 @@ using DmOrder.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Respawn;
@@ -30,26 +31,72 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.GetEnvironmentVariable("TEST_DATABASE_CONNECTION_STRING")
         ?? DefaultTestConnectionString;
 
+    public ApiFactory()
+    {
+        GuardAgainstWipingTheDevelopmentDatabase();
+
+        // Program reads DATABASE_CONNECTION_STRING from the environment (and from a .env file, which
+        // only fills in variables that are not already set). Setting it here is what actually points
+        // the application under test at the test database — UseSetting alone is overridden by the
+        // configuration sources Program adds afterwards.
+        Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", ConnectionString);
+        Environment.SetEnvironmentVariable("ConnectionStrings__Default", ConnectionString);
+
+        // Never let a stray .env seed an admin into the test database.
+        Environment.SetEnvironmentVariable("SEED_ADMIN_EMAIL", string.Empty);
+        Environment.SetEnvironmentVariable("SEED_ADMIN_PASSWORD", string.Empty);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
 
-        builder.UseSetting("ConnectionStrings:Default", ConnectionString);
-        builder.UseSetting("Jwt:Secret", "integration-tests-signing-key-not-used-anywhere-else");
-        builder.UseSetting("Jwt:Issuer", "dmorder-api-tests");
-        builder.UseSetting("Jwt:Audience", "dmorder-web-tests");
-        builder.UseSetting("PlatformBranding:ProjectName", "DM Order");
-        builder.UseSetting("PlatformBranding:ProjectShortName", "DMO");
+        // Appended last so it wins over everything Program registered.
+        builder.ConfigureAppConfiguration(configuration =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = ConnectionString,
+                ["Jwt:Secret"] = "integration-tests-signing-key-not-used-anywhere-else",
+                ["Jwt:Issuer"] = "dmorder-api-tests",
+                ["Jwt:Audience"] = "dmorder-web-tests",
+                ["PlatformBranding:ProjectName"] = "DM Order",
+                ["PlatformBranding:ProjectShortName"] = "DMO",
+                ["Seed:AdminEmail"] = null,
+                ["Seed:AdminPassword"] = null,
+
+                // TestServer gives every request a null remote address, so the whole suite shares one
+                // rate-limit partition and would throttle itself. The limiter is still wired up and is
+                // verified directly by RateLimitingTests, which lowers these on its own host.
+                ["RateLimiting:AuthPermitLimit"] = "10000",
+                ["RateLimiting:PublicWritePermitLimit"] = "10000",
+            }));
     }
 
-    // Implemented explicitly: WebApplicationFactory already has a public DisposeAsync returning
-    // ValueTask, which cannot also satisfy xUnit's IAsyncLifetime.DisposeAsync returning Task.
     async Task IAsyncLifetime.InitializeAsync()
     {
+        // Migrate with a standalone context, before anything touches Services.
+        //
+        // Building the host runs the API's startup work, which seeds roles and therefore expects the
+        // schema to already exist. Resolving AppDbContext from Services to migrate would be circular:
+        // the host would fail to build for want of the very tables we are about to create.
+        await using (var migrationContext = CreateStandaloneContext())
+        {
+            await migrationContext.Database.MigrateAsync();
+        }
+
         using (var scope = Services.CreateScope())
         {
+            // Last line of defence: assert the application actually ended up on the test database.
+            // Getting this wrong once would silently destroy development data.
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await db.Database.MigrateAsync();
+            var actual = db.Database.GetDbConnection().Database;
+            var expected = new NpgsqlConnectionStringBuilder(ConnectionString).Database;
+
+            if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Integration tests are pointed at '{actual}' but expected '{expected}'. Refusing to run.");
+            }
         }
 
         _connection = new NpgsqlConnection(ConnectionString);
@@ -58,11 +105,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         _respawner = await Respawner.CreateAsync(_connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.Postgres,
-            // Migration history must survive, otherwise every reset would re-run migrations.
-            TablesToIgnore = [new Respawn.Graph.Table("__EFMigrationsHistory")],
+            TablesToIgnore =
+            [
+                // Migration history must survive, otherwise every reset would re-run migrations.
+                new Respawn.Graph.Table("__EFMigrationsHistory"),
+
+                // Roles are reference data seeded once at startup, not test data. Truncating them
+                // makes registration fail to assign a role from the second test onwards — which is
+                // exactly the kind of failure that looks like a bug in the code under test.
+                new Respawn.Graph.Table("roles"),
+            ],
             SchemasToInclude = ["public"],
         });
     }
+
+    private AppDbContext CreateStandaloneContext() =>
+        new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString).Options);
 
     /// <summary>Returns the database to an empty state so tests cannot leak into one another.</summary>
     public async Task ResetDatabaseAsync()
@@ -81,6 +139,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
 
         await base.DisposeAsync();
+    }
+
+    /// <summary>
+    /// The suite truncates every table it can see. If someone ever copies the development connection
+    /// string into TEST_DATABASE_CONNECTION_STRING, that would destroy their data on the next run.
+    /// </summary>
+    private void GuardAgainstWipingTheDevelopmentDatabase()
+    {
+        var testDatabase = new NpgsqlConnectionStringBuilder(ConnectionString).Database;
+
+        if (string.IsNullOrWhiteSpace(testDatabase) || !testDatabase.EndsWith("_test", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"TEST_DATABASE_CONNECTION_STRING must point at a database whose name ends in '_test'. " +
+                $"Got '{testDatabase}'. The integration suite wipes every table it can see.");
+        }
     }
 }
 

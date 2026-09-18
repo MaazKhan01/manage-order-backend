@@ -20,12 +20,28 @@ public class EntityTests
     {
         // UUID v7 is time-ordered, which is what keeps the primary key index dense. If this ever
         // fails, the key generation strategy changed and the index behaviour changed with it.
+        //
+        // Only the leading 48-bit millisecond timestamp is compared. The rest is random, so two ids
+        // created inside the same millisecond have no defined order between them — asserting on the
+        // whole value would make this test fail at random.
         var first = new TestEntity();
         var second = new TestEntity();
 
         first.Id.ShouldNotBe(second.Id);
-        Convert.ToHexString(first.Id.ToByteArray(bigEndian: true))
-            .CompareTo(Convert.ToHexString(second.Id.ToByteArray(bigEndian: true)))
-            .ShouldBeLessThanOrEqualTo(0);
+        TimestampOf(second.Id).ShouldBeGreaterThanOrEqualTo(TimestampOf(first.Id));
+    }
+
+    /// <summary>The 48-bit big-endian millisecond timestamp that leads a UUID v7.</summary>
+    private static long TimestampOf(Guid id)
+    {
+        var bytes = id.ToByteArray(bigEndian: true);
+
+        long timestamp = 0;
+        for (var i = 0; i < 6; i++)
+        {
+            timestamp = (timestamp << 8) | bytes[i];
+        }
+
+        return timestamp;
     }
 }

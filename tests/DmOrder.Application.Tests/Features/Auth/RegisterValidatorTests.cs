@@ -6,10 +6,13 @@ public class RegisterValidatorTests
 {
     private readonly RegisterValidator _validator = new();
 
+    // "user@tld" is deliberately absent: a dotless domain is a legal address, and FluentValidation's
+    // EmailAddress() accepts it. Rejecting it would lock out anyone on an intranet-style domain.
     [Theory]
     [InlineData("")]
     [InlineData("not-an-email")]
-    [InlineData("missing@tld")]
+    [InlineData("two@@example.com")]
+    [InlineData("no-local-part@")]
     public void RejectsInvalidEmail(string email)
     {
         var result = _validator.Validate(new RegisterRequest(email, "a-long-enough-password", "Sarah"));

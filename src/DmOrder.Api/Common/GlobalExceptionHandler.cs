@@ -36,7 +36,16 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         problem.Extensions["traceId"] = httpContext.TraceIdentifier;
 
         httpContext.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
-        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
+
+        // Serialised against the runtime type, not the static one. Passing a ValidationProblemDetails
+        // as ProblemDetails silently drops the `errors` map, and the client gets a 400 with nothing to
+        // attach to a field.
+        await httpContext.Response.WriteAsJsonAsync(
+            problem,
+            problem.GetType(),
+            options: null,
+            contentType: "application/problem+json",
+            cancellationToken);
 
         return true;
     }

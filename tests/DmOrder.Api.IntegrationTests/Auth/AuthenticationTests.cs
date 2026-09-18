@@ -91,10 +91,14 @@ public class AuthenticationTests(ApiFactory factory) : IntegrationTestBase(facto
         wrongPassword.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         unknownAccount.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
-        // Identical bodies, so the response cannot be used to discover which addresses are registered.
-        var first = await wrongPassword.Content.ReadAsStringAsync();
-        var second = await unknownAccount.Content.ReadAsStringAsync();
-        first.ShouldBe(second);
+        // The responses must be indistinguishable apart from the traceId, which is unique per request
+        // by design. Anything else differing would let someone discover which addresses are registered.
+        var first = await wrongPassword.Content.ReadFromJsonAsync<ProblemBody>();
+        var second = await unknownAccount.Content.ReadFromJsonAsync<ProblemBody>();
+
+        first!.Title.ShouldBe(second!.Title);
+        first.Detail.ShouldBe(second.Detail);
+        first.Status.ShouldBe(second.Status);
     }
 
     [Fact]
@@ -145,4 +149,6 @@ public class AuthenticationTests(ApiFactory factory) : IntegrationTestBase(facto
     }
 
     private sealed record ValidationProblem(Dictionary<string, string[]> Errors);
+
+    private sealed record ProblemBody(string? Title, string? Detail, int? Status);
 }

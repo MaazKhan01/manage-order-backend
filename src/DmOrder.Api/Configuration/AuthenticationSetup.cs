@@ -1,31 +1,31 @@
 using System.Text;
-using DmOrder.Domain.Identity;
 using DmOrder.Api.Endpoints;
+using DmOrder.Domain.Identity;
 using DmOrder.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace DmOrder.Api.Configuration;
 
 public static class AuthenticationSetup
 {
-    public static IServiceCollection AddApiAuthentication(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
-        var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
-            ?? throw new InvalidOperationException("Jwt configuration is missing. Set JWT_SECRET.");
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 
-        if (string.IsNullOrWhiteSpace(jwt.Secret) || jwt.Secret.Length < 32)
-        {
-            throw new InvalidOperationException(
-                "JWT_SECRET must be set and at least 32 characters. Generate one per environment.");
-        }
-
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+        // Configured from IOptions<JwtOptions> rather than by reading IConfiguration here.
+        //
+        // Reading configuration eagerly at registration time freezes whatever was loaded *so far*, so
+        // any source added later is ignored — which silently desynchronises the key used to validate
+        // tokens from the key TokenService signs with. Every token then fails validation with a plain
+        // 401 and no clue why.
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<JwtOptions>>((bearer, jwtOptions) =>
             {
-                options.TokenValidationParameters = new TokenValidationParameters
+                var jwt = jwtOptions.Value;
+
+                bearer.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidIssuer = jwt.Issuer,
@@ -35,16 +35,16 @@ public static class AuthenticationSetup
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
                     ValidateLifetime = true,
 
-                    // The default is five minutes, which silently extends every token's life. Tokens are
-                    // short by design, so the tolerance should be small too.
+                    // The default is five minutes, which silently extends every token's life. Tokens
+                    // are short by design, so the tolerance should be small too.
                     ClockSkew = TimeSpan.FromSeconds(30),
+
+                    // Inbound claim mapping is off so the claims read here are exactly the ones issued.
+                    NameClaimType = AppClaimTypes.UserId,
+                    RoleClaimType = AppClaimTypes.Role,
                 };
 
-                // Tokens arrive as bearer headers from the Next.js BFF, never from browser storage.
-                // Inbound claim mapping is off so the claims read here are exactly the ones issued.
-                options.MapInboundClaims = false;
-                options.TokenValidationParameters.NameClaimType = AppClaimTypes.UserId;
-                options.TokenValidationParameters.RoleClaimType = AppClaimTypes.Role;
+                bearer.MapInboundClaims = false;
             });
 
         services.AddAuthorizationBuilder()

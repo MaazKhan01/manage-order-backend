@@ -31,6 +31,7 @@ public static class EnvironmentVariableMappings
         ("SUPPORT_EMAIL", "PlatformBranding:SupportEmail"),
         ("SEED_ADMIN_EMAIL", "Seed:AdminEmail"),
         ("SEED_ADMIN_PASSWORD", "Seed:AdminPassword"),
+        ("TRUST_FORWARDED_HEADERS", "TrustForwardedHeaders"),
     ];
 
     public static IEnumerable<KeyValuePair<string, string?>> Collect()

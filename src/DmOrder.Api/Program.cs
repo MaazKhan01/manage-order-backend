@@ -9,6 +9,7 @@ using DmOrder.Infrastructure;
 using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -58,8 +59,24 @@ builder.Services.AddApiVersioning(options =>
     options.ApiVersionReader = new UrlSegmentApiVersionReader();
 });
 
-builder.Services.AddApiAuthentication(builder.Configuration);
-builder.Services.AddApiRateLimiting();
+builder.Services.AddApiAuthentication();
+builder.Services.AddApiRateLimiting(builder.Configuration);
+
+// Behind a reverse proxy (Render, Railway, App Service, nginx) the connection address is the proxy's,
+// which would put every visitor in one rate-limit bucket. Enabled by configuration rather than always,
+// because trusting these headers when NOT behind a proxy lets any client spoof its own address.
+if (builder.Configuration.GetValue<bool>("TrustForwardedHeaders"))
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+        // The proxy is the only hop we trust, and its address is not known ahead of time on these
+        // platforms. Revisit if the API is ever fronted by something with a stable address.
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 
 var frontendOrigins = builder.Configuration
     .GetSection(FrontendOptions.SectionName)
@@ -93,6 +110,11 @@ await using (var scope = app.Services.CreateAsyncScope())
 // --- Pipeline --------------------------------------------------------------
 // Order matters: exception handling first so everything below it produces a consistent problem
 // response, correlation id next so failures are traceable.
+if (builder.Configuration.GetValue<bool>("TrustForwardedHeaders"))
+{
+    app.UseForwardedHeaders();
+}
+
 app.UseExceptionHandler();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
