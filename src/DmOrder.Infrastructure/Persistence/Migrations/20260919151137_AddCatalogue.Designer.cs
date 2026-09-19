@@ -3,6 +3,7 @@ using System;
 using DmOrder.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DmOrder.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260919151137_AddCatalogue")]
+    partial class AddCatalogue
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,6 +28,7 @@ namespace DmOrder.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DmOrder.Domain.Catalogue.Category", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -71,6 +75,7 @@ namespace DmOrder.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DmOrder.Domain.Catalogue.Product", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<bool>("AcceptsCustomOrder")
@@ -137,6 +142,7 @@ namespace DmOrder.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DmOrder.Domain.Catalogue.ProductImage", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("AltText")
@@ -171,6 +177,7 @@ namespace DmOrder.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DmOrder.Domain.Media.MediaAsset", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ContentType")
@@ -229,6 +236,7 @@ namespace DmOrder.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DmOrder.Domain.Stores.Store", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("AddressText")

@@ -1,3 +1,4 @@
+using DmOrder.Domain.Catalogue;
 using DmOrder.Domain.Media;
 using DmOrder.Domain.Stores;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,12 @@ public interface IAppDbContext
     DbSet<Store> Stores { get; }
 
     DbSet<StoreTheme> StoreThemes { get; }
+
+    DbSet<Category> Categories { get; }
+
+    DbSet<Product> Products { get; }
+
+    DbSet<ProductImage> ProductImages { get; }
 
     DbSet<MediaAsset> MediaAssets { get; }
 

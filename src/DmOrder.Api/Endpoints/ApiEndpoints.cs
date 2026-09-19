@@ -47,10 +47,12 @@ public static class ApiEndpoints
         publicApi.MapPlatformEndpoints();
         publicApi.MapPublicAuthEndpoints();
         publicApi.MapPublicStoreEndpoints();
+        publicApi.MapPublicCatalogueEndpoints();
 
         accountApi.MapSellerAccountEndpoints();
 
         sellerApi.MapSellerStoreEndpoints();
+        sellerApi.MapSellerCatalogueEndpoints();
         sellerApi.MapSellerMediaEndpoints();
 
         // Populated from Phase 9.
