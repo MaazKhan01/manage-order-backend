@@ -36,6 +36,10 @@ public interface IAppDbContext
 
     DbSet<OrderFieldValue> OrderFieldValues { get; }
 
+    DbSet<OrderStatusHistory> OrderStatusHistory { get; }
+
+    DbSet<OrderNote> OrderNotes { get; }
+
     DbSet<MediaAsset> MediaAssets { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

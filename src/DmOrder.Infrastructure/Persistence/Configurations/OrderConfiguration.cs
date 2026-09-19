@@ -154,3 +154,44 @@ public sealed class OrderFieldValueConfiguration : IEntityTypeConfiguration<Orde
             .OnDelete(DeleteBehavior.SetNull);
     }
 }
+
+public sealed class OrderStatusHistoryConfiguration : IEntityTypeConfiguration<OrderStatusHistory>
+{
+    public void Configure(EntityTypeBuilder<OrderStatusHistory> builder)
+    {
+        builder.ToTable("order_status_history");
+
+        builder.HasKey(h => h.Id);
+
+        builder.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(20);
+        builder.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(h => h.Note).HasMaxLength(500);
+
+        // Read as a timeline, newest last.
+        builder.HasIndex(h => new { h.OrderId, h.CreatedAt });
+
+        builder.HasOne<Order>()
+            .WithMany()
+            .HasForeignKey(h => h.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class OrderNoteConfiguration : IEntityTypeConfiguration<OrderNote>
+{
+    public void Configure(EntityTypeBuilder<OrderNote> builder)
+    {
+        builder.ToTable("order_notes");
+
+        builder.HasKey(n => n.Id);
+
+        builder.Property(n => n.Body).HasMaxLength(2000).IsRequired();
+
+        builder.HasIndex(n => new { n.OrderId, n.CreatedAt });
+
+        builder.HasOne<Order>()
+            .WithMany()
+            .HasForeignKey(n => n.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}

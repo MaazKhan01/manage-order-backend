@@ -55,6 +55,8 @@ public static class ApiEndpoints
         sellerApi.MapSellerStoreEndpoints();
         sellerApi.MapSellerCatalogueEndpoints();
         sellerApi.MapSellerCustomFieldEndpoints();
+        sellerApi.MapSellerOrderEndpoints();
+        sellerApi.MapSellerCustomerEndpoints();
         sellerApi.MapSellerMediaEndpoints();
 
         // Populated from Phase 9.

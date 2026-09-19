@@ -38,6 +38,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<OrderFieldValue> OrderFieldValues => Set<OrderFieldValue>();
 
+    public DbSet<OrderStatusHistory> OrderStatusHistory => Set<OrderStatusHistory>();
+
+    public DbSet<OrderNote> OrderNotes => Set<OrderNote>();
+
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

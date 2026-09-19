@@ -112,7 +112,7 @@ The dependency direction is enforced by project references alone — `DmOrder.Do
 | 3 | Store, slug, publishing, branding, theme, media upload | Done |
 | 4 | Categories, products, images, storefront catalogue | Done |
 | 5 | Custom fields, public order submission | Done |
-| 6 | Order management, status history, notes, customers | Not started |
+| 6 | Order management, status history, notes, customers | Done (API) |
 | 7 | Public storefront (frontend-led) | Not started |
 | 8 | Branded order slip | Not started |
 | 9 | Platform admin | Not started |

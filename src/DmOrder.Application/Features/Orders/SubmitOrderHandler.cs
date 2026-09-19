@@ -188,6 +188,16 @@ public sealed class SubmitOrderHandler(
 
             db.Orders.Add(order);
 
+            // The timeline starts here. Without this row the order's history begins at the seller's
+            // first action, losing when it actually arrived.
+            db.OrderStatusHistory.Add(OrderStatusHistory.Record(
+                order.Id,
+                fromStatus: null,
+                order.Status,
+                // Null: the customer submitted this, no seller acted.
+                changedByUserId: null,
+                note: null));
+
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
