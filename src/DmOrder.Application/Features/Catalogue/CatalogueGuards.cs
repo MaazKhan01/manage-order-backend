@@ -123,6 +123,32 @@ internal static class CatalogueGuards
         }
     }
 
+    /// <summary>
+    /// Confirms a product belongs to this store, when one was named at all.
+    ///
+    /// Used where a product id is optional — a custom field with no product is a store-wide question.
+    /// </summary>
+    public static async Task RequireCategoryOrProductAsync(
+        IAppDbContext db,
+        Guid storeId,
+        Guid? productId,
+        CancellationToken cancellationToken)
+    {
+        if (productId is not { } id)
+        {
+            return;
+        }
+
+        var belongs = await db.Products.AnyAsync(
+            p => p.Id == id && p.StoreId == storeId && p.DeletedAt == null,
+            cancellationToken);
+
+        if (!belongs)
+        {
+            throw new NotFoundException("Product", id);
+        }
+    }
+
     /// <summary>Confirms an uploaded image belongs to this store before it is attached to a product.</summary>
     public static async Task RequireMediaBelongsToStoreAsync(
         IAppDbContext db,

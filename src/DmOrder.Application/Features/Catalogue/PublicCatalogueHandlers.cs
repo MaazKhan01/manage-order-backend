@@ -1,4 +1,5 @@
 using DmOrder.Application.Common.Interfaces;
+using DmOrder.Application.Features.CustomFields;
 using DmOrder.Domain.Catalogue;
 using DmOrder.Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -127,6 +128,18 @@ public sealed class GetPublicProductHandler(IAppDbContext db, IFileStorage stora
             .Select(i => new ProductImageResponse(i.Id, storage.GetPublicUrl(keys[i.MediaId]), i.AltText, i.DisplayOrder))
             .ToList();
 
+        // This product's questions plus the store-wide ones, which is exactly what the order form
+        // must render. Store-wide first, so a delivery date does not end up buried under
+        // product-specific detail.
+        var fields = await db.CustomFields
+            .AsNoTracking()
+            .Where(f => f.StoreId == storeId
+                        && f.DeletedAt == null
+                        && (f.ProductId == product.Id || f.ProductId == null))
+            .OrderBy(f => f.ProductId == null ? 0 : 1)
+            .ThenBy(f => f.DisplayOrder)
+            .ToListAsync(cancellationToken);
+
         return new PublicProductDetailResponse(
             product.Slug,
             product.Name,
@@ -135,7 +148,8 @@ public sealed class GetPublicProductHandler(IAppDbContext db, IFileStorage stora
             product.PriceIsFrom,
             product.AcceptsCustomOrder,
             categoryName,
-            images);
+            images,
+            [.. fields.Select(f => f.ToPublicResponse())]);
     }
 }
 

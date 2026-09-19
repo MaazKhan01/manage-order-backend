@@ -1,5 +1,7 @@
 using DmOrder.Domain.Catalogue;
+using DmOrder.Domain.CustomFields;
 using DmOrder.Domain.Media;
+using DmOrder.Domain.Orders;
 using DmOrder.Domain.Stores;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +23,18 @@ public interface IAppDbContext
     DbSet<Product> Products { get; }
 
     DbSet<ProductImage> ProductImages { get; }
+
+    DbSet<CustomField> CustomFields { get; }
+
+    DbSet<CustomFieldOption> CustomFieldOptions { get; }
+
+    DbSet<Customer> Customers { get; }
+
+    DbSet<Order> Orders { get; }
+
+    DbSet<OrderItem> OrderItems { get; }
+
+    DbSet<OrderFieldValue> OrderFieldValues { get; }
 
     DbSet<MediaAsset> MediaAssets { get; }
 

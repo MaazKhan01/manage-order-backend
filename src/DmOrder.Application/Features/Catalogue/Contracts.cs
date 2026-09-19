@@ -99,4 +99,6 @@ public sealed record PublicProductDetailResponse(
     bool PriceIsFrom,
     bool AcceptsCustomOrder,
     string? CategoryName,
-    IReadOnlyList<ProductImageResponse> Images);
+    IReadOnlyList<ProductImageResponse> Images,
+    /// <summary>The seller's questions for this product, plus their store-wide ones, in order.</summary>
+    IReadOnlyList<DmOrder.Application.Features.CustomFields.PublicCustomFieldResponse> CustomFields);

@@ -1,7 +1,9 @@
 using DmOrder.Application.Common.Interfaces;
 using DmOrder.Domain.Catalogue;
 using DmOrder.Domain.Common;
+using DmOrder.Domain.CustomFields;
 using DmOrder.Domain.Media;
+using DmOrder.Domain.Orders;
 using DmOrder.Domain.Stores;
 using DmOrder.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -23,6 +25,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Product> Products => Set<Product>();
 
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+
+    public DbSet<CustomField> CustomFields => Set<CustomField>();
+
+    public DbSet<CustomFieldOption> CustomFieldOptions => Set<CustomFieldOption>();
+
+    public DbSet<Customer> Customers => Set<Customer>();
+
+    public DbSet<Order> Orders => Set<Order>();
+
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+
+    public DbSet<OrderFieldValue> OrderFieldValues => Set<OrderFieldValue>();
 
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
 
