@@ -110,7 +110,7 @@ The dependency direction is enforced by project references alone — `DmOrder.Do
 | 1 | Foundation: projects, EF Core, logging, error handling, versioning, health | Done |
 | 2 | Authentication, roles, JWT + rotating refresh tokens, BFF cookies | Done |
 | 3 | Store, slug, publishing, branding, theme, media upload | Done |
-| 4 | Categories, products, images, storefront catalogue | Done (API) |
+| 4 | Categories, products, images, storefront catalogue | Done |
 | 5 | Custom fields, public order submission | Not started |
 | 6 | Order management, status history, notes, customers | Not started |
 | 7 | Public storefront (frontend-led) | Not started |

@@ -297,16 +297,64 @@ a public URL anyone can visit.
 
 ---
 
+## Phase 4 — categories and products
+
+All seller catalogue routes are scoped to the caller's own store; none takes a store id.
+
+### Categories
+
+`GET` `/api/v1/seller/categories` — with a live product count per category.
+`POST` — `{ "name": "Cakes" }`; the web address is derived from the name when omitted.
+`PUT` `/{categoryId}` · `DELETE` `/{categoryId}` · `POST /reorder` — `{ "idsInOrder": [...] }`.
+
+Deleting a category **keeps its products** and leaves them uncategorised, and frees the address for
+reuse — a seller who deletes "Cakes" by mistake can recreate it. `409` when the address is taken
+within that store; two different sellers may both have "cakes".
+
+### Products
+
+`GET` `/api/v1/seller/products?page=&pageSize=&categoryId=&search=&isActive=`
+
+Paginated (default 20, max 100, clamped not rejected). `search` is case-insensitive over the name,
+and treats `%` and `_` as literal text.
+
+`POST` — `{ "name": "Custom Cake", "categoryId": null }`. Name only; everything else is edited after.
+`GET` `PUT` `DELETE` `/{productId}` · `POST /reorder`.
+
+**Price is nullable on purpose** — custom work is quoted per job. `priceIsFrom` renders "from ₨3,000"
+and requires an actual price, otherwise `400`.
+
+Deleting is soft, so existing orders keep rendering. Deleted products vanish from every list and
+return `404` by id.
+
+### Product images
+
+`POST` `/{productId}/images` — `{ "mediaId": "…", "altText": "…" }`, attaching an image already
+uploaded via `POST /api/v1/seller/media`. `404` when the media belongs to another store.
+`DELETE` `/{productId}/images/{imageId}` · `POST /{productId}/images/reorder`.
+
+Maximum 8 per product. **The first image is what listings show**, so reordering is editorial.
+Removing an image leaves the `MediaAsset` and the stored file alone — the seller may still be using
+it elsewhere.
+
+### Storefront
+
+`GET` `/api/v1/public/stores/{slug}/products` — categories in the seller's order, plus an
+`uncategorised` list and a `totalProducts` count. Empty categories are omitted.
+
+`GET` `/api/v1/public/stores/{slug}/products/{productSlug}` — one product with all its images.
+
+Inactive and deleted rows are filtered **in the query**: a draft never reaches the client at all.
+Both return `404` when the store is unpublished, suspended or non-existent.
+
+---
+
 ## Planned
 
 Listed so the frontend can be designed against the shape, but **not implemented yet**.
 
 | Phase | Method & route | Purpose |
 |---|---|---|
-| 4 | `GET` `POST` `PUT` `DELETE /api/v1/seller/categories` | Categories |
-| 4 | `GET` `POST` `PUT` `DELETE /api/v1/seller/products` | Products |
-| 4 | `GET /api/v1/public/stores/{slug}/products` | Storefront catalogue |
-| 4 | `GET /api/v1/public/stores/{slug}/products/{productSlug}` | Product detail + its custom fields |
 | 5 | `GET` `POST` `PUT` `DELETE /api/v1/seller/custom-fields` | Custom field definitions |
 | 5 | `POST /api/v1/public/stores/{slug}/orders` | Customer order submission (rate limited) |
 | 6 | `GET /api/v1/seller/orders` | Order list, filterable by status |
