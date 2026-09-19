@@ -484,7 +484,14 @@ Listed so the frontend can be designed against the shape, but **not implemented 
 
 | Phase | Method & route | Purpose |
 |---|---|---|
-| 8 | `GET /api/v1/seller/orders/{id}/slip` | Data for the printable order slip |
 | 9 | `GET /api/v1/admin/sellers` · `/stores` | Platform admin lists |
 | 9 | `PUT /api/v1/admin/stores/{id}/status` | Activate / deactivate a store |
 | 9 | `GET /api/v1/admin/stats` | Basic platform counts |
+
+### No slip endpoint
+
+Phase 8 originally planned `GET /api/v1/seller/orders/{id}/slip`. It was dropped. The slip needs the
+store and the order, and `GET /api/v1/seller/store` and `GET /api/v1/seller/orders/{id}` already
+return both; the frontend fetches them in parallel from a Server Component. A third endpoint would
+only have been a second, drifting shape for data we already serve — and the slip is a rendering
+concern, not a domain one. See [ADR 0006](ADR/0006-order-slip-printable-html.md).
