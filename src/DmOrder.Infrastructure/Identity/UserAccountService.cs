@@ -1,7 +1,9 @@
 using DmOrder.Application.Common.Interfaces;
 using DmOrder.Application.Common.Models;
 using DmOrder.Domain.Identity;
+using DmOrder.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace DmOrder.Infrastructure.Identity;
 
@@ -11,6 +13,7 @@ namespace DmOrder.Infrastructure.Identity;
 /// </summary>
 public sealed class UserAccountService(
     UserManager<ApplicationUser> userManager,
+    AppDbContext db,
     IDateTimeProvider clock) : IUserAccountService
 {
     public async Task<RegistrationResult> RegisterSellerAsync(
@@ -112,8 +115,14 @@ public sealed class UserAccountService(
     {
         var roles = await userManager.GetRolesAsync(user);
 
-        // StoreId stays null until Phase 3 introduces stores. It is resolved from the database by
-        // owner, never from anything the client sends.
-        return new AuthenticatedUser(user.Id, user.Email!, user.DisplayName, [.. roles], StoreId: null);
+        // The tenant is resolved from the database by owner id — never from anything the client sends.
+        // Because this runs on every login and every refresh, a seller who has just created their store
+        // picks up the claim on their next token rather than having to sign out and back in.
+        var storeId = await db.Stores
+            .Where(s => s.OwnerUserId == user.Id)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync();
+
+        return new AuthenticatedUser(user.Id, user.Email!, user.DisplayName, [.. roles], storeId);
     }
 }

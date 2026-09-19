@@ -51,6 +51,15 @@ builder.Services.AddScoped<IStoreContext, HttpStoreContext>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+// Enums travel as names in both directions.
+//
+// Without this, responses carry "Sans" (the DTOs map to strings) while requests demand 0 — an
+// asymmetric contract that a client cannot satisfy by echoing back what it was given. Names are also
+// stable across reordering, which integers are not.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1);
@@ -129,6 +138,7 @@ else
     app.UseHsts();
 }
 
+app.UseLocalMediaFiles();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();

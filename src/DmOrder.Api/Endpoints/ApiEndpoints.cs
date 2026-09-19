@@ -46,10 +46,14 @@ public static class ApiEndpoints
         // Feature modules register themselves against the group that matches their audience.
         publicApi.MapPlatformEndpoints();
         publicApi.MapPublicAuthEndpoints();
+        publicApi.MapPublicStoreEndpoints();
+
         accountApi.MapSellerAccountEndpoints();
 
-        // Populated from Phase 3 onwards.
-        _ = sellerApi;
+        sellerApi.MapSellerStoreEndpoints();
+        sellerApi.MapSellerMediaEndpoints();
+
+        // Populated from Phase 9.
         _ = adminApi;
 
         return app;

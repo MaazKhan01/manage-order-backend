@@ -24,6 +24,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     private const string DefaultTestConnectionString =
         "Host=localhost;Port=5432;Database=dmorder_test;Username=postgres;Password=postgres";
 
+    private readonly string _uploadRoot =
+        Path.Combine(Path.GetTempPath(), "dmorder-tests", Guid.CreateVersion7().ToString("n"));
+
     private Respawner? _respawner;
     private NpgsqlConnection? _connection;
 
@@ -69,6 +72,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 // verified directly by RateLimitingTests, which lowers these on its own host.
                 ["RateLimiting:AuthPermitLimit"] = "10000",
                 ["RateLimiting:PublicWritePermitLimit"] = "10000",
+
+                // Uploads go to a throwaway folder, so a test run never leaves files in the repo.
+                ["FileStorage:LocalRootPath"] = _uploadRoot,
             }));
     }
 
@@ -139,6 +145,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
 
         await base.DisposeAsync();
+
+        try
+        {
+            if (Directory.Exists(_uploadRoot))
+            {
+                Directory.Delete(_uploadRoot, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+            // A leftover temp folder is not worth failing a green test run over.
+        }
     }
 
     /// <summary>

@@ -74,6 +74,15 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         UnauthorizedAccessException => Problem(
             StatusCodes.Status401Unauthorized, "Unauthorized.", "Authentication is required.", httpContext),
 
+        // A body the model binder cannot read is the client's mistake, not ours. Left unhandled it
+        // surfaced as a 500 with an alarming "Unhandled exception" log line for what is really a 400.
+        // The detail is deliberately generic — parser messages quote the payload back.
+        BadHttpRequestException => Problem(
+            StatusCodes.Status400BadRequest,
+            "Malformed request.",
+            "The request body could not be read. Check the field types.",
+            httpContext),
+
         OperationCanceledException => Problem(
             ClientClosedRequest, "Request cancelled.", "The request was cancelled.", httpContext),
 

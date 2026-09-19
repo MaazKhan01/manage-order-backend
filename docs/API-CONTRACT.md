@@ -190,21 +190,121 @@ Claims issued: `sub`, `email`, `role` (repeated), `store_id` (once a store exist
 
 ---
 
+## Phase 3 — stores, branding and media
+
+### Enums travel as names
+
+Every enum is sent and received as its **name**, never its number: `"Sans"`, not `0`. A client can echo
+back exactly what it was given. An unknown name is a `400`, not a `500`.
+
+### `GET /api/v1/seller/store`
+
+The caller's own store. **`204 No Content`** when they have not created one — that is a normal state
+for a new seller, not an error, and the frontend routes to setup on it.
+
+No endpoint under `/seller/store` takes a store id. The store is resolved from the authenticated
+identity, so there is nothing for a caller to tamper with.
+
+### `POST /api/v1/seller/store`
+
+```json
+{ "name": "Sarah's Cakes", "slug": "sarah-cakes", "currency": "PKR" }
+```
+
+`201` with the store. `409` if the seller already has one, or the address is taken. `400` for a
+malformed or **reserved** slug (`admin`, `api`, `dashboard`, `login`, `_next`, …) — storefronts live at
+the URL root, so these would shadow platform routes. See
+[ADR 0007](ADR/0007-storefront-slug-at-url-root.md).
+
+Slugs are lowercased before validation, so mixed-case input is accepted and normalised rather than
+rejected.
+
+**After creating a store, refresh the token.** The `store_id` claim did not exist when the current
+access token was issued; a refresh re-reads the user and picks it up.
+
+### `PUT /api/v1/seller/store`
+
+Profile, contact details, location and SEO. `422` if the edit would remove the last contact channel
+from a **published** store — a storefront nobody can reach is worse than refusing the edit.
+
+Social links must be `http(s)` absolute URLs. A `javascript:` URL is rejected: these are rendered as
+anchors that customers click.
+
+### `PUT /api/v1/seller/store/slug`
+
+Changes the public address. `409` if taken. Breaks every link the seller has already shared, so the UI
+confirms first.
+
+### `PUT /api/v1/seller/store/theme`
+
+```json
+{
+  "primaryColor": "#111827",
+  "accentColor": "#0F766E",
+  "backgroundColor": "#FFFFFF",
+  "fontChoice": "Sans",
+  "buttonStyle": "Rounded",
+  "layoutVariant": "Grid"
+}
+```
+
+Colours must be strict 6-digit hex — they are injected into CSS custom properties on a public page.
+`fontChoice`: `Sans` | `Serif` | `Rounded`. `buttonStyle`: `Rounded` | `Pill` | `Square`.
+`layoutVariant`: `Grid` | `List` | `Showcase`.
+
+### `POST /api/v1/seller/store/publish` · `/unpublish`
+
+`422` when the store has no name or no contact channel, or has been deactivated by an admin. The
+domain decides readiness; the response message is written for the seller.
+
+### `POST /api/v1/seller/media`
+
+`multipart/form-data` with `file` and `purpose`
+(`StoreLogo` | `StoreCover` | `StoreBackground` | `ProductImage` | `OrderReference`).
+
+Validated by **magic bytes**, not by the declared content type or the file extension — both are
+attacker-controlled. JPEG, PNG, WebP and AVIF only; SVG is deliberately unsupported because it can
+carry script. Max 5MB. The stored filename is generated from the detected type.
+
+```json
+{ "id": "0199…", "url": "http://localhost:5080/media/stores/…/logo.png", "contentType": "image/png", "sizeBytes": 20481 }
+```
+
+### `PUT /api/v1/seller/store/logo` · `/cover` · `/background`
+
+```json
+{ "mediaId": "0199…" }
+```
+
+`null` clears the image. `404` if the media belongs to another store — without that check a seller
+could point their logo at someone else's upload.
+
+### `GET /api/v1/public/stores/{slug}`
+
+A published storefront. `404` when unpublished, suspended, or non-existent — **all three are
+indistinguishable**, so the endpoint cannot be used to discover that a seller is preparing something.
+
+Returns a different shape from the seller's view: no publishing state, no admin flags, no SEO drafts.
+
+### `GET /api/v1/public/stores/slug-available?slug=`
+
+```json
+{ "slug": "sarah-cakes", "isAvailable": true, "reason": null }
+```
+
+Anonymous. It does reveal whether a slug is taken, which is unavoidable — every taken slug is already
+a public URL anyone can visit.
+
+---
+
 ## Planned
 
 Listed so the frontend can be designed against the shape, but **not implemented yet**.
 
 | Phase | Method & route | Purpose |
 |---|---|---|
-| 3 | `POST /api/v1/seller/store` | Create the seller's store |
-| 3 | `GET` `PUT /api/v1/seller/store` | Read / update own store |
-| 3 | `PUT /api/v1/seller/store/theme` | Update theme |
-| 3 | `POST /api/v1/seller/store/publish` · `/unpublish` | Publishing |
-| 3 | `GET /api/v1/public/stores/{slug}` | Published storefront |
-| 3 | `GET /api/v1/public/stores/slug-available?slug=` | Slug availability, including reserved names |
 | 4 | `GET` `POST` `PUT` `DELETE /api/v1/seller/categories` | Categories |
 | 4 | `GET` `POST` `PUT` `DELETE /api/v1/seller/products` | Products |
-| 4 | `POST /api/v1/seller/media` | Image upload |
 | 4 | `GET /api/v1/public/stores/{slug}/products` | Storefront catalogue |
 | 4 | `GET /api/v1/public/stores/{slug}/products/{productSlug}` | Product detail + its custom fields |
 | 5 | `GET` `POST` `PUT` `DELETE /api/v1/seller/custom-fields` | Custom field definitions |
