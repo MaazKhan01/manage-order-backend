@@ -349,14 +349,80 @@ Both return `404` when the store is unpublished, suspended or non-existent.
 
 ---
 
+## Phase 5 — custom fields and orders
+
+### Questions (seller)
+
+`GET` `/api/v1/seller/custom-fields?productId=` — a product's questions **plus** the store-wide ones.
+Omit `productId` for everything.
+`POST` — `{ "productId": null, "label": "Flavour", "fieldType": "Select" }`. A null product means the
+question is asked on every order. A choice question is created with two placeholder options, because
+one with none cannot be answered.
+`PUT` `/{fieldId}` · `DELETE` `/{fieldId}` · `POST /reorder`.
+
+Field types: `Text` `LongText` `Number` `Select` `MultiSelect` `Boolean` `Date` `Time` `Image`.
+Constraints apply per type and are cleared when the type changes, so a field moved from Number to
+Text cannot carry a stale min/max.
+
+Deleting a question is soft. Answers already given keep rendering, because orders snapshot the label
+and type — see [ADR 0004](ADR/0004-order-snapshots.md).
+
+### `GET /api/v1/public/stores/{slug}/products/{productSlug}`
+
+Now also returns `customFields`: exactly what the order form must render, store-wide questions first.
+
+### `POST /api/v1/public/stores/{slug}/orders`
+
+Anonymous and rate limited. The most hostile surface in the product.
+
+```json
+{
+  "productSlug": "custom-birthday-cake",
+  "quantity": 1,
+  "customerName": "Ayesha",
+  "customerPhone": "0300 123 4567",
+  "customerEmail": null,
+  "deliveryAddress": "12 Gulberg, Lahore",
+  "customerNote": null,
+  "answers": [{ "fieldId": "0199…", "value": "Chocolate" }],
+  "website": ""
+}
+```
+
+`200` returns `{ orderNumber, storeName, whatsApp }` — an order number to quote, and nothing that
+would let anyone read back orders they did not place.
+
+`400` carries per-field errors **keyed by field id**, so each one lands on its own input. Every
+problem is reported at once.
+
+Rules worth knowing:
+
+- Validation is driven by the seller's field list. An answer to a field that does not exist is
+  dropped, so a hand-crafted payload cannot add data to an order.
+- Choices are re-checked against the seller's options even though the form only offered valid ones.
+- Free text is capped even when the seller set no limit.
+- `website` is a honeypot. A filled value gets a normal-looking `200` with `orderNumber: 0` and
+  nothing is stored.
+- Customers are matched by normalised phone **within a store**: "0300 123 4567" and "03001234567"
+  are one person, and the same person at two sellers is two records.
+- Order numbers are a per-store sequence starting at 1, retried on collision.
+- The client IP is stored hashed and salted per store, so the platform cannot correlate a visitor
+  across sellers.
+
+### `POST /api/v1/public/stores/{slug}/order-images`
+
+`multipart/form-data` with `file`. A customer's reference photo, uploaded before the order.
+Anonymous, rate limited, 3MB cap (smaller than the seller's), magic-byte validated, and bound to the
+store. Only a published store accepts uploads.
+
+---
+
 ## Planned
 
 Listed so the frontend can be designed against the shape, but **not implemented yet**.
 
 | Phase | Method & route | Purpose |
 |---|---|---|
-| 5 | `GET` `POST` `PUT` `DELETE /api/v1/seller/custom-fields` | Custom field definitions |
-| 5 | `POST /api/v1/public/stores/{slug}/orders` | Customer order submission (rate limited) |
 | 6 | `GET /api/v1/seller/orders` | Order list, filterable by status |
 | 6 | `GET /api/v1/seller/orders/{id}` | Order detail with custom field answers |
 | 6 | `PUT /api/v1/seller/orders/{id}/status` | Status change, recorded in history |
