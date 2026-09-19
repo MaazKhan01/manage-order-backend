@@ -417,17 +417,73 @@ store. Only a published store accepts uploads.
 
 ---
 
+## Phase 6 — order management
+
+All scoped to the caller's own store. An order or customer belonging to another seller returns
+`404`, never `403`.
+
+### `GET /api/v1/seller/orders?page=&pageSize=&status=&search=`
+
+Newest first. `search` matches customer name, phone, or order number — the number **exactly**, so
+"12" does not pull in every order containing that digit.
+
+### `GET /api/v1/seller/orders/counts`
+
+`{ new, confirmed, inProgress, readyForDelivery, completed, cancelled, total }` from one grouped
+query, for the list's filter tabs.
+
+### `GET /api/v1/seller/orders/{orderId}`
+
+The order with its items, each item's answers, full status history and private notes.
+
+Answers render from their **snapshot**, never a lookup of the live field, so deleting or renaming a
+question does not change what a customer said. `isFinal` is true once completed or cancelled.
+
+### `PUT /api/v1/seller/orders/{orderId}/status`
+
+```json
+{ "status": "Confirmed", "note": "Spoke to her, confirmed the design." }
+```
+
+`204`. Statuses: `New` `Confirmed` `InProgress` `ReadyForDelivery` `Completed` `Cancelled`.
+
+Forward steps may skip ahead, and an open order can move backwards. **A completed or cancelled order
+cannot be reopened** — `422`. Setting the same status again succeeds, so a double-click is not an
+error. Every change is appended to the order's history with who and why.
+
+### `PUT /api/v1/seller/orders/{orderId}/payment`
+
+```json
+{ "paymentStatus": "PartiallyPaid", "totalAmount": 12500 }
+```
+
+`204`. Payment states: `Unpaid` `PartiallyPaid` `Paid` `Refunded`. The total is settable here because
+most custom work is quoted after the seller reads the details. V1 records payment, it does not
+process it.
+
+### `POST /api/v1/seller/orders/{orderId}/notes` · `DELETE /{noteId}`
+
+Private notes. **Never returned by any endpoint under `/api/v1/public`.** Deletable — they are the
+seller's working memory. Status history is not, and stays append-only.
+
+### `GET /api/v1/seller/customers?page=&pageSize=&search=`
+
+Built from orders; customers never register. Aggregates are computed in the query. `totalSpent`
+counts **completed orders only** — including cancelled ones would overstate what a customer is worth.
+
+### `GET /api/v1/seller/customers/{customerId}`
+
+One customer and their order history with this store. The same person ordering from two sellers is
+two separate records, so neither seller learns anything about the other's customers.
+
+---
+
 ## Planned
 
 Listed so the frontend can be designed against the shape, but **not implemented yet**.
 
 | Phase | Method & route | Purpose |
 |---|---|---|
-| 6 | `GET /api/v1/seller/orders` | Order list, filterable by status |
-| 6 | `GET /api/v1/seller/orders/{id}` | Order detail with custom field answers |
-| 6 | `PUT /api/v1/seller/orders/{id}/status` | Status change, recorded in history |
-| 6 | `POST /api/v1/seller/orders/{id}/notes` | Internal note |
-| 6 | `GET /api/v1/seller/customers` · `/{id}` | Customers and their order history |
 | 8 | `GET /api/v1/seller/orders/{id}/slip` | Data for the printable order slip |
 | 9 | `GET /api/v1/admin/sellers` · `/stores` | Platform admin lists |
 | 9 | `PUT /api/v1/admin/stores/{id}/status` | Activate / deactivate a store |
