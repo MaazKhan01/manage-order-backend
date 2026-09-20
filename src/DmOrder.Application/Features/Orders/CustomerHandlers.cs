@@ -7,10 +7,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DmOrder.Application.Features.Orders;
 
-public sealed record CustomerListQuery(int? Page, int? PageSize, string? Search);
+public sealed record CustomerListQuery(int? Page, int? PageSize, string? Search, string? Sort);
 
 public sealed class ListCustomersHandler(IAppDbContext db, ICurrentUser currentUser)
 {
+    /// <summary>Columns this endpoint sorts by; anything else falls back to the default.</summary>
+    private static readonly string[] SortableFields = ["name", "orderCount", "lastOrderAt"];
+
     public async Task<PagedResult<CustomerListItemResponse>> HandleAsync(
         CustomerListQuery query,
         CancellationToken cancellationToken)
@@ -31,8 +34,28 @@ public sealed class ListCustomersHandler(IAppDbContext db, ICurrentUser currentU
 
         // Aggregates are computed in the query rather than by loading orders. A seller with a few
         // hundred customers should not pull their whole order history to render a list.
-        var rows = await customers
-            .OrderBy(c => c.Name)
+        var sort = SortRequest.Parse(query.Sort, SortableFields, "name", defaultDescending: false);
+
+        // Ties break on Id so paging cannot skip or repeat a customer.
+        var sorted = sort switch
+        {
+            { Field: "name", Descending: true } => customers.OrderByDescending(c => c.Name).ThenBy(c => c.Id),
+            { Field: "orderCount", Descending: true } =>
+                customers.OrderByDescending(c => db.Orders.Count(o => o.CustomerId == c.Id)).ThenBy(c => c.Id),
+            { Field: "orderCount" } =>
+                customers.OrderBy(c => db.Orders.Count(o => o.CustomerId == c.Id)).ThenBy(c => c.Id),
+            { Field: "lastOrderAt", Descending: true } =>
+                customers
+                    .OrderByDescending(c => db.Orders.Where(o => o.CustomerId == c.Id).Max(o => (DateTimeOffset?)o.CreatedAt))
+                    .ThenBy(c => c.Id),
+            { Field: "lastOrderAt" } =>
+                customers
+                    .OrderBy(c => db.Orders.Where(o => o.CustomerId == c.Id).Max(o => (DateTimeOffset?)o.CreatedAt))
+                    .ThenBy(c => c.Id),
+            _ => customers.OrderBy(c => c.Name).ThenBy(c => c.Id),
+        };
+
+        var rows = await sorted
             .Select(c => new
             {
                 c.Id,
@@ -48,12 +71,23 @@ public sealed class ListCustomersHandler(IAppDbContext db, ICurrentUser currentU
                 TotalSpent = db.Orders
                     .Where(o => o.CustomerId == c.Id && o.Status == OrderStatus.Completed)
                     .Sum(o => (decimal?)o.TotalAmount),
+                // Needed because the sum cannot express "nothing completed yet": EF translates a
+                // nullable Sum to COALESCE(SUM(...), 0), so an empty set comes back as 0 and is
+                // indistinguishable from a completed order that was never priced.
+                CompletedCount = db.Orders
+                    .Count(o => o.CustomerId == c.Id && o.Status == OrderStatus.Completed),
             })
             .ToPagedResultAsync(page, cancellationToken);
 
         var items = rows.Items
             .Select(r => new CustomerListItemResponse(
-                r.Id, r.Name, r.Phone, r.Email, r.OrderCount, r.LastOrderAt, r.TotalSpent))
+                r.Id,
+                r.Name,
+                r.Phone,
+                r.Email,
+                r.OrderCount,
+                r.LastOrderAt,
+                r.CompletedCount == 0 ? null : r.TotalSpent))
             .ToList();
 
         return new PagedResult<CustomerListItemResponse>(items, rows.Page, rows.PageSize, rows.TotalCount);

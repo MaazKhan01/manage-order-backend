@@ -74,10 +74,11 @@ public static class CatalogueEndpoints
                 Guid? categoryId,
                 string? search,
                 bool? isActive,
+                string? sort,
                 ListProductsHandler handler,
                 CancellationToken cancellationToken) =>
                 Results.Ok(await handler.HandleAsync(
-                    new ProductListQuery(page, pageSize, categoryId, search, isActive),
+                    new ProductListQuery(page, pageSize, categoryId, search, isActive, sort),
                     cancellationToken)))
             .WithName("ListProducts")
             .WithSummary("The seller's products, paginated and filterable.");

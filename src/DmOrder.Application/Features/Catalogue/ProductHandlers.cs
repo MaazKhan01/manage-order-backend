@@ -7,10 +7,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DmOrder.Application.Features.Catalogue;
 
-public sealed record ProductListQuery(int? Page, int? PageSize, Guid? CategoryId, string? Search, bool? IsActive);
+public sealed record ProductListQuery(
+    int? Page,
+    int? PageSize,
+    Guid? CategoryId,
+    string? Search,
+    bool? IsActive,
+    string? Sort);
 
 public sealed class ListProductsHandler(IAppDbContext db, ICurrentUser currentUser, IFileStorage storage)
 {
+    /// <summary>Columns this endpoint sorts by; anything else falls back to the seller's own order.</summary>
+    private static readonly string[] SortableFields = ["displayOrder", "name", "price", "createdAt"];
+
     public async Task<PagedResult<ProductListItemResponse>> HandleAsync(
         ProductListQuery query,
         CancellationToken cancellationToken)
@@ -43,8 +52,23 @@ public sealed class ListProductsHandler(IAppDbContext db, ICurrentUser currentUs
             products = products.Where(p => EF.Functions.Like(p.Name.ToLower(), pattern, SearchPattern.EscapeCharacter));
         }
 
-        // Ordered before paging — an unordered page is a non-deterministic page.
-        var ordered = products.OrderBy(p => p.DisplayOrder).ThenBy(p => p.Name);
+        // Ordered before paging — an unordered page is a non-deterministic page. Ties break on Id so
+        // paging cannot skip or repeat a product.
+        var sort = SortRequest.Parse(query.Sort, SortableFields, "displayOrder", defaultDescending: false);
+
+        var ordered = sort switch
+        {
+            { Field: "name", Descending: true } => products.OrderByDescending(p => p.Name).ThenBy(p => p.Id),
+            { Field: "name" } => products.OrderBy(p => p.Name).ThenBy(p => p.Id),
+            // Nulls last either way: "no price set" is not cheaper than the cheapest product.
+            { Field: "price", Descending: true } =>
+                products.OrderBy(p => p.Price == null).ThenByDescending(p => p.Price).ThenBy(p => p.Id),
+            { Field: "price" } =>
+                products.OrderBy(p => p.Price == null).ThenBy(p => p.Price).ThenBy(p => p.Id),
+            { Field: "createdAt", Descending: true } => products.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id),
+            { Field: "createdAt" } => products.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id),
+            _ => products.OrderBy(p => p.DisplayOrder).ThenBy(p => p.Name).ThenBy(p => p.Id),
+        };
 
         var page = new PageRequest(query.Page, query.PageSize);
 

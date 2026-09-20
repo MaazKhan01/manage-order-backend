@@ -8,10 +8,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DmOrder.Application.Features.Orders;
 
-public sealed record OrderListQuery(int? Page, int? PageSize, OrderStatus? Status, string? Search);
+public sealed record OrderListQuery(
+    int? Page,
+    int? PageSize,
+    OrderStatus? Status,
+    string? Search,
+    string? Sort);
 
 public sealed class ListOrdersHandler(IAppDbContext db, ICurrentUser currentUser)
 {
+    /// <summary>Columns this endpoint sorts by; anything else falls back to newest-first.</summary>
+    private static readonly string[] SortableFields =
+        ["createdAt", "orderNumber", "deliveryDate", "totalAmount"];
+
     public async Task<PagedResult<OrderListItemResponse>> HandleAsync(
         OrderListQuery query,
         CancellationToken cancellationToken)
@@ -40,8 +49,23 @@ public sealed class ListOrdersHandler(IAppDbContext db, ICurrentUser currentUser
                                              || EF.Functions.Like(c.Phone, pattern, SearchPattern.EscapeCharacter))));
         }
 
-        // Newest first: a seller opens this to see what just came in.
-        var ordered = orders.OrderByDescending(o => o.CreatedAt);
+        // Newest first by default: a seller opens this to see what just came in. Ties break on Id so
+        // paging cannot skip or repeat an order.
+        var sort = SortRequest.Parse(query.Sort, SortableFields, "createdAt");
+
+        var ordered = sort switch
+        {
+            { Field: "orderNumber", Descending: true } => orders.OrderByDescending(o => o.OrderNumber).ThenBy(o => o.Id),
+            { Field: "orderNumber" } => orders.OrderBy(o => o.OrderNumber).ThenBy(o => o.Id),
+            { Field: "deliveryDate", Descending: true } => orders.OrderByDescending(o => o.DeliveryDate).ThenBy(o => o.Id),
+            // Nulls last when sorting soonest-first: an order with no date is not "due today".
+            { Field: "deliveryDate" } =>
+                orders.OrderBy(o => o.DeliveryDate == null).ThenBy(o => o.DeliveryDate).ThenBy(o => o.Id),
+            { Field: "totalAmount", Descending: true } => orders.OrderByDescending(o => o.TotalAmount).ThenBy(o => o.Id),
+            { Field: "totalAmount" } => orders.OrderBy(o => o.TotalAmount).ThenBy(o => o.Id),
+            { Descending: false } => orders.OrderBy(o => o.CreatedAt).ThenBy(o => o.Id),
+            _ => orders.OrderByDescending(o => o.CreatedAt).ThenBy(o => o.Id),
+        };
         var page = new PageRequest(query.Page, query.PageSize);
 
         var rows = await ordered

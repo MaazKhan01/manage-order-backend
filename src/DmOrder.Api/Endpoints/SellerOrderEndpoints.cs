@@ -15,10 +15,11 @@ public static class SellerOrderEndpoints
                 int? pageSize,
                 OrderStatus? status,
                 string? search,
+                string? sort,
                 ListOrdersHandler handler,
                 CancellationToken cancellationToken) =>
                 Results.Ok(await handler.HandleAsync(
-                    new OrderListQuery(page, pageSize, status, search), cancellationToken)))
+                    new OrderListQuery(page, pageSize, status, search, sort), cancellationToken)))
             .WithName("ListOrders")
             .WithSummary("The seller's orders, newest first. Filter by status, search by customer or number.");
 
@@ -93,10 +94,11 @@ public static class SellerOrderEndpoints
                 int? page,
                 int? pageSize,
                 string? search,
+                string? sort,
                 ListCustomersHandler handler,
                 CancellationToken cancellationToken) =>
                 Results.Ok(await handler.HandleAsync(
-                    new CustomerListQuery(page, pageSize, search), cancellationToken)))
+                    new CustomerListQuery(page, pageSize, search, sort), cancellationToken)))
             .WithName("ListCustomers")
             .WithSummary("Everyone who has ordered, built from their orders. Customers never register.");
 
