@@ -115,5 +115,5 @@ The dependency direction is enforced by project references alone — `DmOrder.Do
 | 6 | Order management, status history, notes, customers | Done |
 | 7 | Public storefront (frontend-led) | Done |
 | 8 | Branded order slip | Done (no backend work — see API-CONTRACT) |
-| 9 | Platform admin | Not started |
+| 9 | Platform admin | Done |
 | 10 | Deployment | Not started |

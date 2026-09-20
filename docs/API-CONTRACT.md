@@ -478,15 +478,65 @@ two separate records, so neither seller learns anything about the other's custom
 
 ---
 
+## Admin — `/api/v1/admin`
+
+Requires the **Admin** role. This is the only part of the API that reads across tenants; everything
+else is scoped to the caller's own store. What makes that legitimate is the Admin policy on the route
+group, so no route here may be moved to another group.
+
+**There is no destructive action.** Suspending a store or an account keeps every order, customer and
+product and is reversible in one click. A support conversation should not be able to delete a
+seller's business.
+
+| Method & route | Purpose |
+|---|---|
+| `GET /admin/stats` | Platform-wide counts |
+| `GET /admin/stores` | Every store, with its owner |
+| `PUT /admin/stores/{storeId}/status` | Suspend or restore a storefront |
+| `GET /admin/sellers` | Seller accounts, with the store each owns |
+| `PUT /admin/sellers/{userId}/status` | Suspend or restore an account |
+
+### `GET /admin/stores`
+
+Query: `page`, `pageSize`, `search` (name or slug), `filter` (`All` · `Live` · `Draft` ·
+`Suspended`), `sort`.
+
+`Live` means published by the seller **and** not suspended by an administrator — the two flags are
+independent and neither answers "can a visitor reach this?" on its own.
+
+### `GET /admin/sellers`
+
+Query: `page`, `pageSize`, `search` (display name or email), `isActive`, `sort`.
+
+Paging runs over accounts rather than stores, so a seller who registered and never set a shop up
+still appears — with `storeSlug: null`.
+
+### `PUT /admin/sellers/{userId}/status`
+
+Body: `{ "isActive": false }`. A suspended account cannot sign in, and its live refresh tokens are
+revoked immediately, so the change ends the current session rather than only preventing the next
+sign-in.
+
+Only accounts in the **Seller** role can be targeted. Any other id returns **404**, including a real
+administrator's — both so the platform cannot be locked out by suspending its own admins, and so the
+route cannot be used to discover who they are.
+
+### Sorting
+
+`sort=field` ascending, `sort=-field` descending. Each endpoint has its own whitelist
+(stores: `name`, `createdAt`, `orderCount`, `productCount`; sellers: `displayName`, `email`,
+`createdAt`) and an unrecognised field falls back to the endpoint default, direction included — a
+stale bookmark should render the default list rather than fail.
+
+Sorting is applied in the database, never to the page after it arrives.
+
+---
+
 ## Planned
 
 Listed so the frontend can be designed against the shape, but **not implemented yet**.
 
-| Phase | Method & route | Purpose |
-|---|---|---|
-| 9 | `GET /api/v1/admin/sellers` · `/stores` | Platform admin lists |
-| 9 | `PUT /api/v1/admin/stores/{id}/status` | Activate / deactivate a store |
-| 9 | `GET /api/v1/admin/stats` | Basic platform counts |
+_Nothing outstanding for V1._
 
 ### No slip endpoint
 
