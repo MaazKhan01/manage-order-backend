@@ -85,6 +85,7 @@ public static class DependencyInjection
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IUserDisplayNameLookup, UserDisplayNameLookup>();
+        services.AddScoped<IUserDirectory, UserDirectory>();
         services.AddScoped<IdentitySeeder>();
     }
 

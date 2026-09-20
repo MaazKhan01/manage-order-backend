@@ -338,7 +338,6 @@ public sealed record ProductImagePayload(Guid Id, string Url, string? AltText, i
 
 public sealed record ProductListPayload(Guid Id, string Name, string Slug, string? PrimaryImageUrl, int ImageCount);
 
-public sealed record PagedPayload<T>(List<T> Items, int Page, int PageSize, int TotalCount, int TotalPages, bool HasNextPage);
 
 public sealed record PublicCataloguePayload(
     List<PublicCategoryPayload> Categories,

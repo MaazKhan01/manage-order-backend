@@ -27,7 +27,7 @@ public sealed class ListOrdersHandler(IAppDbContext db, ICurrentUser currentUser
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var term = EscapeLikeWildcards(query.Search.Trim().ToLowerInvariant());
+            var pattern = SearchPattern.Contains(query.Search);
 
             // Sellers search for a person or an order number, not a product. Matching the number
             // exactly avoids "12" pulling in every order containing that digit.
@@ -36,8 +36,8 @@ public sealed class ListOrdersHandler(IAppDbContext db, ICurrentUser currentUser
             orders = orders.Where(o =>
                 (asNumber != null && o.OrderNumber == asNumber)
                 || db.Customers.Any(c => c.Id == o.CustomerId
-                                         && (EF.Functions.Like(c.Name.ToLower(), $"%{term}%", "\\")
-                                             || EF.Functions.Like(c.Phone, $"%{term}%", "\\"))));
+                                         && (EF.Functions.Like(c.Name.ToLower(), pattern, SearchPattern.EscapeCharacter)
+                                             || EF.Functions.Like(c.Phone, pattern, SearchPattern.EscapeCharacter))));
         }
 
         // Newest first: a seller opens this to see what just came in.
@@ -84,11 +84,6 @@ public sealed class ListOrdersHandler(IAppDbContext db, ICurrentUser currentUser
 
         return new PagedResult<OrderListItemResponse>(items, rows.Page, rows.PageSize, rows.TotalCount);
     }
-
-    private static string EscapeLikeWildcards(string term) =>
-        term.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
 }
 
 public sealed class GetOrderCountsHandler(IAppDbContext db, ICurrentUser currentUser)

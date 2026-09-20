@@ -60,3 +60,15 @@ public sealed record CurrentUserPayload(
     string[] Roles,
     Guid? StoreId,
     bool HasStore);
+
+/// <summary>
+/// The API's one list envelope, mirrored once for every suite. A second copy in a feature namespace
+/// is how two tests end up asserting against two different shapes of the same response.
+/// </summary>
+public sealed record PagedPayload<T>(
+    List<T> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages,
+    bool HasNextPage);

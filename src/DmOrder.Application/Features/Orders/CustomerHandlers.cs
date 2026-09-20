@@ -21,10 +21,10 @@ public sealed class ListCustomersHandler(IAppDbContext db, ICurrentUser currentU
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var term = EscapeLikeWildcards(query.Search.Trim().ToLowerInvariant());
+            var pattern = SearchPattern.Contains(query.Search);
             customers = customers.Where(c =>
-                EF.Functions.Like(c.Name.ToLower(), $"%{term}%", "\\")
-                || EF.Functions.Like(c.Phone, $"%{term}%", "\\"));
+                EF.Functions.Like(c.Name.ToLower(), pattern, SearchPattern.EscapeCharacter)
+                || EF.Functions.Like(c.Phone, pattern, SearchPattern.EscapeCharacter));
         }
 
         var page = new PageRequest(query.Page, query.PageSize);
@@ -58,11 +58,6 @@ public sealed class ListCustomersHandler(IAppDbContext db, ICurrentUser currentU
 
         return new PagedResult<CustomerListItemResponse>(items, rows.Page, rows.PageSize, rows.TotalCount);
     }
-
-    private static string EscapeLikeWildcards(string term) =>
-        term.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
 }
 
 public sealed class GetCustomerHandler(IAppDbContext db, ICurrentUser currentUser)

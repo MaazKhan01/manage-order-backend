@@ -39,8 +39,8 @@ public sealed class ListProductsHandler(IAppDbContext db, ICurrentUser currentUs
             // Wildcards are escaped so a search for "50%" means what it says rather than matching
             // everything. This is a sequential scan over one seller's own products, which is fine at
             // this size; it needs a trigram index only if catalogues get large.
-            var term = EscapeLikeWildcards(query.Search.Trim().ToLowerInvariant());
-            products = products.Where(p => EF.Functions.Like(p.Name.ToLower(), $"%{term}%", "\\"));
+            var pattern = SearchPattern.Contains(query.Search);
+            products = products.Where(p => EF.Functions.Like(p.Name.ToLower(), pattern, SearchPattern.EscapeCharacter));
         }
 
         // Ordered before paging — an unordered page is a non-deterministic page.
@@ -83,11 +83,6 @@ public sealed class ListProductsHandler(IAppDbContext db, ICurrentUser currentUs
 
         return new PagedResult<ProductListItemResponse>(items, rows.Page, rows.PageSize, rows.TotalCount);
     }
-
-    private static string EscapeLikeWildcards(string term) =>
-        term.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
 }
 
 public sealed class GetProductHandler(IAppDbContext db, ICurrentUser currentUser, IFileStorage storage)

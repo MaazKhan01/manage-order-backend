@@ -59,8 +59,7 @@ public static class ApiEndpoints
         sellerApi.MapSellerCustomerEndpoints();
         sellerApi.MapSellerMediaEndpoints();
 
-        // Populated from Phase 9.
-        _ = adminApi;
+        adminApi.MapAdminEndpoints();
 
         return app;
     }
