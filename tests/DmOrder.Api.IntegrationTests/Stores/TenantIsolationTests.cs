@@ -52,7 +52,7 @@ public class TenantIsolationTests(ApiFactory factory) : IntegrationTestBase(fact
         await clientA.PutAsJsonAsync("/api/v1/seller/store", new
         {
             name = "Renamed By A",
-            contactPhone = "0300 1111111",
+            contactPhone = "+92 300 1111111",
         });
 
         var bAfter = await clientB.GetFromJsonAsync<StorePayload>("/api/v1/seller/store");

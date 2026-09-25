@@ -17,6 +17,26 @@ public static class SearchPattern
     /// <summary>A case-insensitive "contains" pattern. Compare against a lower-cased column.</summary>
     public static string Contains(string term) => $"%{Escape(term.Trim().ToLowerInvariant())}%";
 
+    /// <summary>
+    /// A pattern that matches a stored E.164 number against a phone number typed any way at all.
+    ///
+    /// Numbers are stored canonically (+923002222222) but a seller searches for the number the way
+    /// they know it - "0300 222 2222". Neither a prefix nor a contains match connects those two, so
+    /// this compares the trailing digits instead: the leading zero is a national-dialling artefact
+    /// and the country code is only present on one side.
+    ///
+    /// Returns null when the term is too short to be a phone number, in which case the caller should
+    /// not attempt a phone match at all - two digits would match half the customer list.
+    /// </summary>
+    public static string? PhoneSuffix(string term)
+    {
+        var digits = new string([.. term.Where(char.IsAsciiDigit)]).TrimStart('0');
+
+        // Six is long enough to be meaningful and short enough to allow "the last six digits", which
+        // is how people actually half-remember a number.
+        return digits.Length < 6 ? null : $"%{digits}";
+    }
+
     private static string Escape(string term) =>
         term.Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("%", "\\%", StringComparison.Ordinal)

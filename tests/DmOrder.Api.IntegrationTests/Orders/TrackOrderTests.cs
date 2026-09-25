@@ -21,7 +21,7 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
 
         var response = await Client.PostAsJsonAsync(
             "/api/v1/public/orders/track",
-            new { reference = placed.Reference, phone = "0300 1234567" });
+            new { reference = placed.Reference, phone = "+92 300 1234567" });
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -44,7 +44,7 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
         // is exactly why it cannot be the only thing required.
         var response = await Client.PostAsJsonAsync(
             "/api/v1/public/orders/track",
-            new { reference = placed.Reference, phone = "0300 9999999" });
+            new { reference = placed.Reference, phone = "+92 300 9999999" });
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
@@ -56,11 +56,11 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
 
         var wrongPhone = await Client.PostAsJsonAsync(
             "/api/v1/public/orders/track",
-            new { reference = placed.Reference, phone = "0300 9999999" });
+            new { reference = placed.Reference, phone = "+92 300 9999999" });
 
         var wrongReference = await Client.PostAsJsonAsync(
             "/api/v1/public/orders/track",
-            new { reference = "DM-2026-ZZZZZZ", phone = "0300 1234567" });
+            new { reference = "DM-2026-ZZZZZZ", phone = "+92 300 1234567" });
 
         // Same status and same body: telling them apart would turn this into an oracle for
         // discovering which references are real.
@@ -83,7 +83,7 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
 
         var response = await Client.PostAsJsonAsync(
             "/api/v1/public/orders/track",
-            new { reference = typed, phone = "03001234567" });
+            new { reference = typed, phone = "+923001234567" });
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -105,7 +105,7 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
 
         var response = await Client.PostAsJsonAsync(
             "/api/v1/public/orders/track",
-            new { reference = placed.Reference, phone = "0300 1234567" });
+            new { reference = placed.Reference, phone = "+92 300 1234567" });
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -146,7 +146,7 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
         // A store cannot go live without a contact channel.
         (await sellerClient.PutAsJsonAsync(
             "/api/v1/seller/store",
-            new { name = "Sarah's Cakes", contactPhone = "0300 1234567" })).EnsureSuccessStatusCode();
+            new { name = "Sarah's Cakes", contactPhone = "+92 300 1234567" })).EnsureSuccessStatusCode();
 
         (await sellerClient.PostAsJsonAsync("/api/v1/seller/store/publish", new { }))
             .EnsureSuccessStatusCode();
@@ -178,7 +178,7 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
                 productSlug = created.Slug,
                 quantity = 1,
                 customerName = "Ayesha Khan",
-                customerPhone = "03001234567",
+                customerPhone = "+923001234567",
                 customerEmail = (string?)null,
                 deliveryAddress = (string?)null,
                 customerNote = (string?)null,

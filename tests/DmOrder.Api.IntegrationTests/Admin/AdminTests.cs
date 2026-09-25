@@ -90,7 +90,7 @@ public sealed class AdminTests(ApiFactory factory) : IntegrationTestBase(factory
         // storefront's contact block trustworthy, so publishing has to satisfy it here too.
         (await sellerClient.PutAsJsonAsync(
             "/api/v1/seller/store",
-            new { name = "Sarah's Cakes", contactPhone = "0300 1234567" })).EnsureSuccessStatusCode();
+            new { name = "Sarah's Cakes", contactPhone = "+92 300 1234567" })).EnsureSuccessStatusCode();
 
         (await sellerClient.PostAsJsonAsync("/api/v1/seller/store/publish", new { })).EnsureSuccessStatusCode();
         (await Client.GetAsync("/api/v1/public/stores/sarahs-cakes")).StatusCode.ShouldBe(HttpStatusCode.OK);

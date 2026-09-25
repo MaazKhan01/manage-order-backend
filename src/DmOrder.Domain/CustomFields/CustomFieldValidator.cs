@@ -18,9 +18,26 @@ public static class CustomFieldValidator
     public const int DefaultMaxTextLength = 500;
     public const int DefaultMaxLongTextLength = 4000;
 
+    /// <summary>
+    /// A date more than this far ahead is a typo, not a plan. Five years is generous enough that no
+    /// real order is refused, and tight enough to catch a mistyped year.
+    ///
+    /// A sanity bound, deliberately not a business rule — the product has not said how far ahead a
+    /// seller may take bookings, and inventing a shorter limit would decide that for them.
+    /// </summary>
+    public const int MaxYearsAhead = 5;
+
+    /// <param name="earliestDate">
+    /// The earliest date a date answer may be, or null for no lower bound.
+    ///
+    /// A customer filling in the public order form is answering "when do you need this", so a date
+    /// in the past is always a mistake and the caller passes today. A seller recording an order that
+    /// already happened is doing the opposite, and passes null — same field, different context.
+    /// </param>
     public static CustomFieldValidationResult Validate(
         IReadOnlyList<CustomField> fields,
-        IReadOnlyList<CustomFieldAnswer> answers)
+        IReadOnlyList<CustomFieldAnswer> answers,
+        DateOnly? earliestDate = null)
     {
         var validated = new List<ValidatedAnswer>();
         var errors = new List<FieldValidationError>();
@@ -30,7 +47,7 @@ public static class CustomFieldValidator
         foreach (var field in fields.Where(f => !f.IsDeleted).OrderBy(f => f.DisplayOrder))
         {
             var answer = answers.FirstOrDefault(a => a.FieldId == field.Id);
-            var result = ValidateField(field, answer);
+            var result = ValidateField(field, answer, earliestDate);
 
             if (result.Error is not null)
             {
@@ -47,7 +64,8 @@ public static class CustomFieldValidator
 
     private static (ValidatedAnswer? Answer, string? Error) ValidateField(
         CustomField field,
-        CustomFieldAnswer? answer)
+        CustomFieldAnswer? answer,
+        DateOnly? earliestDate)
     {
         var raw = answer?.Value?.Trim();
         var hasValue = field.FieldType switch
@@ -72,7 +90,7 @@ public static class CustomFieldValidator
             CustomFieldType.Select => ValidateSelect(field, raw!),
             CustomFieldType.MultiSelect => ValidateMultiSelect(field, answer!.Values!),
             CustomFieldType.Boolean => ValidateBoolean(field, raw!),
-            CustomFieldType.Date => ValidateDate(field, raw!),
+            CustomFieldType.Date => ValidateDate(field, raw!, earliestDate),
             CustomFieldType.Time => ValidateTime(field, raw!),
             CustomFieldType.Image => (Answer(field, mediaId: answer!.MediaId), null),
             _ => (null, $"{field.Label} could not be read."),
@@ -167,11 +185,27 @@ public static class CustomFieldValidator
         };
     }
 
-    private static (ValidatedAnswer?, string?) ValidateDate(CustomField field, string value)
+    private static (ValidatedAnswer?, string?) ValidateDate(
+        CustomField field,
+        string value,
+        DateOnly? earliestDate)
     {
+        // Invariant culture on purpose: the wire format is ISO (yyyy-MM-dd), so 03/04 can never be
+        // read as March in one place and April in another.
         if (!DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
             return (null, $"{field.Label} must be a date.");
+        }
+
+        if (earliestDate is { } earliest && date < earliest)
+        {
+            return (null, $"{field.Label} cannot be in the past.");
+        }
+
+        var latest = (earliestDate ?? date).AddYears(MaxYearsAhead);
+        if (date > latest)
+        {
+            return (null, $"{field.Label} is too far ahead. Check the year.");
         }
 
         return (Answer(field, date: date), null);

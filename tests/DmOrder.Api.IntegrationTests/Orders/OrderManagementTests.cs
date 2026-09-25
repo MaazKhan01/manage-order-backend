@@ -45,7 +45,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("list@example.com", "list-orders");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
 
         var list = await seller.GetFromJsonAsync<PagedPayload<OrderListPayload>>("/api/v1/seller/orders");
 
@@ -62,7 +62,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("hist@example.com", "hist-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
         var orderId = await FirstOrderIdAsync(seller);
 
         var detail = await seller.GetFromJsonAsync<OrderDetailPayload>($"/api/v1/seller/orders/{orderId}");
@@ -80,7 +80,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("status@example.com", "status-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
         var orderId = await FirstOrderIdAsync(seller);
 
         var response = await seller.PutAsJsonAsync($"/api/v1/seller/orders/{orderId}/status", new
@@ -107,7 +107,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("final@example.com", "final-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
         var orderId = await FirstOrderIdAsync(seller);
 
         await seller.PutAsJsonAsync($"/api/v1/seller/orders/{orderId}/status",
@@ -129,7 +129,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("quote@example.com", "quote-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
         var orderId = await FirstOrderIdAsync(seller);
 
         var response = await seller.PutAsJsonAsync($"/api/v1/seller/orders/{orderId}/payment", new
@@ -151,7 +151,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("note@example.com", "note-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
         var orderId = await FirstOrderIdAsync(seller);
 
         var added = await seller.PostAsJsonAsync($"/api/v1/seller/orders/{orderId}/notes", new
@@ -178,8 +178,8 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("counts@example.com", "counts-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001111111");
-        await SubmitOrderAsync(slug, productSlug, "Bilal", "03002222222");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001111111");
+        await SubmitOrderAsync(slug, productSlug, "Bilal", "+923002222222");
 
         var orderId = await FirstOrderIdAsync(seller);
         await seller.PutAsJsonAsync($"/api/v1/seller/orders/{orderId}/status",
@@ -198,8 +198,8 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("search@example.com", "search-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha Khan", "03001111111");
-        await SubmitOrderAsync(slug, productSlug, "Bilal Ahmed", "03002222222");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha Khan", "+923001111111");
+        await SubmitOrderAsync(slug, productSlug, "Bilal Ahmed", "+923002222222");
 
         var byName = await seller.GetFromJsonAsync<PagedPayload<OrderListPayload>>(
             "/api/v1/seller/orders?search=ayesha");
@@ -220,8 +220,8 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         var (seller, slug, productSlug) = await SetUpStoreWithOrderAsync("cust@example.com", "cust-store");
         using var _ = seller;
 
-        await SubmitOrderAsync(slug, productSlug, "Ayesha Khan", "0300 123 4567");
-        await SubmitOrderAsync(slug, productSlug, "Ayesha", "03001234567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha Khan", "+92 300 123 4567");
+        await SubmitOrderAsync(slug, productSlug, "Ayesha", "+923001234567");
 
         var customers = await seller.GetFromJsonAsync<PagedPayload<CustomerListPayload>>("/api/v1/seller/customers");
 
@@ -258,7 +258,7 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
             productSlug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = new object[] { new { fieldId = field.Id, value = "Chocolate" } },
         });
 
@@ -284,8 +284,8 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         using var _1 = alpha;
         using var _2 = beta;
 
-        await SubmitOrderAsync(alphaSlug, alphaProduct, "Ayesha", "03001111111");
-        await SubmitOrderAsync(betaSlug, betaProduct, "Bilal", "03002222222");
+        await SubmitOrderAsync(alphaSlug, alphaProduct, "Ayesha", "+923001111111");
+        await SubmitOrderAsync(betaSlug, betaProduct, "Bilal", "+923002222222");
 
         var betaOrderId = await FirstOrderIdAsync(beta);
 
@@ -320,8 +320,8 @@ public class OrderManagementTests(ApiFactory factory) : IntegrationTestBase(fact
         using var _2 = beta;
 
         // The same person orders from both sellers.
-        await SubmitOrderAsync(alphaSlug, alphaProduct, "Ayesha", "03001234567");
-        await SubmitOrderAsync(betaSlug, betaProduct, "Ayesha", "03001234567");
+        await SubmitOrderAsync(alphaSlug, alphaProduct, "Ayesha", "+923001234567");
+        await SubmitOrderAsync(betaSlug, betaProduct, "Ayesha", "+923001234567");
 
         var betaCustomers = await beta.GetFromJsonAsync<PagedPayload<CustomerListPayload>>("/api/v1/seller/customers");
         var alphaCustomers = await alpha.GetFromJsonAsync<PagedPayload<CustomerListPayload>>("/api/v1/seller/customers");

@@ -25,9 +25,14 @@ public sealed class ListCustomersHandler(IAppDbContext db, ICurrentUser currentU
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var pattern = SearchPattern.Contains(query.Search);
+
+            // See the note in ListOrdersHandler: E.164 storage means a phone is matched on its
+            // trailing digits, not as a substring of what the seller typed.
+            var phone = SearchPattern.PhoneSuffix(query.Search);
+
             customers = customers.Where(c =>
                 EF.Functions.Like(c.Name.ToLower(), pattern, SearchPattern.EscapeCharacter)
-                || EF.Functions.Like(c.Phone, pattern, SearchPattern.EscapeCharacter));
+                || (phone != null && EF.Functions.Like(c.Phone, phone, SearchPattern.EscapeCharacter)));
         }
 
         var page = new PageRequest(query.Page, query.PageSize);

@@ -101,7 +101,7 @@ public sealed class SubscriptionTests(ApiFactory factory) : IntegrationTestBase(
                 productSlug = "chocolate-cake",
                 quantity = 1,
                 customerName = "Ayesha Khan",
-                customerPhone = "03001234567",
+                customerPhone = "+923001234567",
                 customerEmail = (string?)null,
                 deliveryAddress = (string?)null,
                 customerNote = (string?)null,
@@ -128,7 +128,7 @@ public sealed class SubscriptionTests(ApiFactory factory) : IntegrationTestBase(
 
         var renamed = await client.PutAsJsonAsync(
             "/api/v1/seller/store",
-            new { name = "Sarah's Cakes", contactPhone = "0300 1234567" });
+            new { name = "Sarah's Cakes", contactPhone = "+92 300 1234567" });
         renamed.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -206,7 +206,7 @@ public sealed class SubscriptionTests(ApiFactory factory) : IntegrationTestBase(
         {
             (await client.PutAsJsonAsync(
                 "/api/v1/seller/store",
-                new { name = "Sarah's Cakes", contactPhone = "0300 1234567" })).EnsureSuccessStatusCode();
+                new { name = "Sarah's Cakes", contactPhone = "+92 300 1234567" })).EnsureSuccessStatusCode();
 
             (await client.PostAsJsonAsync("/api/v1/seller/store/publish", new { }))
                 .EnsureSuccessStatusCode();

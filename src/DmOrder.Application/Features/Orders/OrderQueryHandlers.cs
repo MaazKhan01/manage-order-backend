@@ -42,11 +42,16 @@ public sealed class ListOrdersHandler(IAppDbContext db, ICurrentUser currentUser
             // exactly avoids "12" pulling in every order containing that digit.
             var asNumber = int.TryParse(query.Search.Trim().TrimStart('#'), out var parsed) ? parsed : (int?)null;
 
+            // Phones are stored in E.164 but searched for the way the seller knows them, so the
+            // match is on trailing digits rather than a substring. Null when the term is too short
+            // to be a number at all, in which case no phone match is attempted.
+            var phone = SearchPattern.PhoneSuffix(query.Search);
+
             orders = orders.Where(o =>
                 (asNumber != null && o.OrderNumber == asNumber)
                 || db.Customers.Any(c => c.Id == o.CustomerId
                                          && (EF.Functions.Like(c.Name.ToLower(), pattern, SearchPattern.EscapeCharacter)
-                                             || EF.Functions.Like(c.Phone, pattern, SearchPattern.EscapeCharacter))));
+                                             || (phone != null && EF.Functions.Like(c.Phone, phone, SearchPattern.EscapeCharacter)))));
         }
 
         // Newest first by default: a seller opens this to see what just came in. Ties break on Id so

@@ -22,6 +22,7 @@ namespace DmOrder.Application.Features.Orders;
 public sealed class SubmitOrderHandler(
     IAppDbContext db,
     IOrderReferenceFactory references,
+    IDateTimeProvider clock,
     ILogger<SubmitOrderHandler> logger)
 {
     public async Task<SubmitOrderResponse> HandleAsync(
@@ -69,7 +70,10 @@ public sealed class SubmitOrderHandler(
 
         var validation = CustomFieldValidator.Validate(
             fields,
-            [.. request.Answers.Select(a => new CustomFieldAnswer(a.FieldId, a.Value, a.Values, a.MediaId))]);
+            [.. request.Answers.Select(a => new CustomFieldAnswer(a.FieldId, a.Value, a.Values, a.MediaId))],
+            // A customer answering "when do you need this" cannot need it yesterday. The seller's
+            // own manual entry passes no lower bound, because that is recording history.
+            earliestDate: DateOnly.FromDateTime(clock.UtcNow.UtcDateTime));
 
         if (!validation.IsValid)
         {
@@ -255,7 +259,7 @@ public sealed class SubmitOrderHandler(
 
 public sealed class SubmitOrderValidator : AbstractValidator<SubmitOrderRequest>
 {
-    public SubmitOrderValidator()
+    public SubmitOrderValidator(IPhoneNumbers phones)
     {
         RuleFor(x => x.ProductSlug).NotEmpty().MaximumLength(80);
 
@@ -270,7 +274,11 @@ public sealed class SubmitOrderValidator : AbstractValidator<SubmitOrderRequest>
         RuleFor(x => x.CustomerPhone)
             .NotEmpty().WithMessage("Please give a phone number.")
             .MaximumLength(32)
-            .Must(HaveEnoughDigits).WithMessage("Enter a valid phone number.");
+            // Checked against the real numbering plan, not by counting digits. The frontend sends
+            // E.164, so no default region is needed; a number written locally without one is
+            // correctly refused rather than guessed at.
+            .Must(phone => phones.Parse(phone).IsValid)
+            .WithMessage("Enter a valid phone number, including the country code.");
 
         RuleFor(x => x.CustomerEmail)
             .MaximumLength(256)
@@ -288,10 +296,4 @@ public sealed class SubmitOrderValidator : AbstractValidator<SubmitOrderRequest>
             .WithMessage("Too many answers were submitted.");
     }
 
-    /// <summary>
-    /// Deliberately loose: sellers here take orders from several countries and formats, and a strict
-    /// pattern would reject real customers. It only rules out obvious nonsense.
-    /// </summary>
-    private static bool HaveEnoughDigits(string? phone) =>
-        phone is not null && phone.Count(char.IsAsciiDigit) is >= 7 and <= 20;
 }

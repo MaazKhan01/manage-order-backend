@@ -77,7 +77,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "0300 1234567",
+            customerPhone = "+92 300 1234567",
             deliveryAddress = "12 Gulberg, Lahore",
             answers = new object[]
             {
@@ -112,7 +112,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Sana",
-            customerPhone = "03009998877",
+            customerPhone = "+923009998877",
             answers = new object[]
             {
                 new { fieldId = bust.Id, value = "34" },
@@ -138,7 +138,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = Array.Empty<object>(),
         });
 
@@ -165,7 +165,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = new object[] { new { fieldId = flavour.Id, value = "Gold Leaf" } },
         });
 
@@ -185,7 +185,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = new object[] { new { fieldId = Guid.CreateVersion7(), value = "injected" } },
         });
 
@@ -206,7 +206,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = Array.Empty<object>(),
         });
 
@@ -236,7 +236,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = Array.Empty<object>(),
         });
 
@@ -254,9 +254,9 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
         var productA = await CatalogueTests.CreateProductAsync(sellerA, "Cake", null);
         var productB = await CatalogueTests.CreateProductAsync(sellerB, "Bouquet", null);
 
-        var first = await SubmitAsync(slugA, productA.Slug, "Ayesha", "03001111111");
-        var second = await SubmitAsync(slugA, productA.Slug, "Bilal", "03002222222");
-        var otherStore = await SubmitAsync(slugB, productB.Slug, "Chand", "03003333333");
+        var first = await SubmitAsync(slugA, productA.Slug, "Ayesha", "+923001111111");
+        var second = await SubmitAsync(slugA, productA.Slug, "Bilal", "+923002222222");
+        var otherStore = await SubmitAsync(slugB, productB.Slug, "Chand", "+923003333333");
 
         first.OrderNumber.ShouldBe(1);
         second.OrderNumber.ShouldBe(2);
@@ -272,12 +272,12 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
 
         var product = await CatalogueTests.CreateProductAsync(seller, "Cake", null);
 
-        await SubmitAsync(slug, product.Slug, "Ayesha Khan", "0300 123 4567", email: "ayesha@example.com");
-        var second = await SubmitAsync(slug, product.Slug, "Ayesha", "03001234567");
+        await SubmitAsync(slug, product.Slug, "Ayesha Khan", "+92 300 123 4567", email: "ayesha@example.com");
+        var second = await SubmitAsync(slug, product.Slug, "Ayesha", "+923001234567");
 
         second.OrderNumber.ShouldBe(2);
 
-        // "0300 123 4567" and "03001234567" are the same person, so there must be exactly one record.
+        // "+92 300 123 4567" and "+923001234567" are the same person, so there must be exactly one record.
         var customers = await CountCustomersAsync(slug);
         customers.ShouldBe(1);
     }
@@ -295,7 +295,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Bot",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = Array.Empty<object>(),
             website = "http://spam.example",
         });
@@ -344,7 +344,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 100_000,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = Array.Empty<object>(),
         });
 
@@ -365,7 +365,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             productSlug = product.Slug,
             quantity = 1,
             customerName = "Ayesha",
-            customerPhone = "03001234567",
+            customerPhone = "+923001234567",
             answers = new object[] { new { fieldId = flavour.Id, value = "Chocolate" } },
         });
 
@@ -374,7 +374,7 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
             .StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         // A later order for the same product simply is not asked any more.
-        var after = await SubmitAsync(slug, product.Slug, "Bilal", "03007777777");
+        var after = await SubmitAsync(slug, product.Slug, "Bilal", "+923007777777");
         after.OrderNumber.ShouldBe(2);
     }
 

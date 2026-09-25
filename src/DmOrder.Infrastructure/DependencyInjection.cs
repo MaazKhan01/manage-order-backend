@@ -5,6 +5,7 @@ using DmOrder.Infrastructure.Billing;
 using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Orders;
 using DmOrder.Infrastructure.Persistence;
+using DmOrder.Infrastructure.Phones;
 using DmOrder.Infrastructure.Persistence.Interceptors;
 using DmOrder.Infrastructure.Services;
 using DmOrder.Infrastructure.Storage;
@@ -99,6 +100,9 @@ public static class DependencyInjection
         // The only provider that exists. Every call that would take money throws, and IsConfigured
         // is false so nothing offers an upgrade button that cannot work.
         services.AddSingleton<IPaymentProvider, UnconfiguredPaymentProvider>();
+
+        // Thread-safe and expensive to build, so shared. See LibPhoneNumbers.
+        services.AddSingleton<IPhoneNumbers, LibPhoneNumbers>();
         services.AddScoped<IdentitySeeder>();
     }
 

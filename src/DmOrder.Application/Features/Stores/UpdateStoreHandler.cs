@@ -71,12 +71,24 @@ public sealed class ChangeStoreSlugHandler(
 
 public sealed class UpdateStoreProfileValidator : AbstractValidator<UpdateStoreProfileRequest>
 {
-    public UpdateStoreProfileValidator()
+    public UpdateStoreProfileValidator(IPhoneNumbers phones)
     {
         RuleFor(x => x.Name).NotEmpty().WithMessage("A store name is required.").MaximumLength(120);
         RuleFor(x => x.Description).MaximumLength(2000);
-        RuleFor(x => x.ContactPhone).MaximumLength(32);
-        RuleFor(x => x.WhatsApp).MaximumLength(32);
+        // Both are optional, so the rule only applies once something has been typed. A seller's own
+        // numbers are checked against the real numbering plan for the same reason a customer's are:
+        // a wrong number in the storefront footer is a lost order.
+        RuleFor(x => x.ContactPhone)
+            .MaximumLength(32)
+            .Must(phone => phones.Parse(phone).IsValid)
+            .When(x => !string.IsNullOrWhiteSpace(x.ContactPhone))
+            .WithMessage("Enter a valid phone number, including the country code.");
+
+        RuleFor(x => x.WhatsApp)
+            .MaximumLength(32)
+            .Must(phone => phones.Parse(phone).IsValid)
+            .When(x => !string.IsNullOrWhiteSpace(x.WhatsApp))
+            .WithMessage("Enter a valid WhatsApp number, including the country code.");
 
         RuleFor(x => x.ContactEmail)
             .MaximumLength(256)

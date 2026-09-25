@@ -23,6 +23,20 @@ public static class SellerOrderEndpoints
             .WithName("ListOrders")
             .WithSummary("The seller's orders, newest first. Filter by status, search by customer or number.");
 
+        orders.MapPost("/", async (
+                ManualOrderRequest request,
+                CreateManualOrderHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var created = await handler.HandleAsync(request, cancellationToken);
+                return Results.Created($"/api/v1/seller/orders/{created.Id}", created);
+            })
+            .WithValidation<ManualOrderRequest>()
+            .WithName("CreateManualOrder")
+            .WithSummary(
+                "Record an order that arrived some other way - a DM, a call, a conversation at a stall. "
+                + "Gets a public reference like any other, so the customer can still track it.");
+
         orders.MapGet("/counts", async (GetOrderCountsHandler handler, CancellationToken cancellationToken) =>
                 Results.Ok(await handler.HandleAsync(cancellationToken)))
             .WithName("GetOrderCounts")

@@ -233,7 +233,7 @@ public class StoreTests(ApiFactory factory) : IntegrationTestBase(factory)
         var response = await client.PutAsJsonAsync("/api/v1/seller/store", new
         {
             name = "XSS Store",
-            contactPhone = "0300 1234567",
+            contactPhone = "+92 300 1234567",
             instagramUrl = "javascript:alert(document.cookie)",
         });
 
@@ -267,7 +267,7 @@ public class StoreTests(ApiFactory factory) : IntegrationTestBase(factory)
         var response = await client.PutAsJsonAsync("/api/v1/seller/store", new
         {
             name,
-            contactPhone = "0300 1234567",
+            contactPhone = "+92 300 1234567",
         });
 
         response.EnsureSuccessStatusCode();

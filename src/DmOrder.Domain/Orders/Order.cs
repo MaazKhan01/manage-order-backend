@@ -93,6 +93,14 @@ public sealed class Order : Entity, ITenantOwned
         };
     }
 
+    /// <summary>
+    /// Marks this as an order the seller recorded by hand rather than one a customer submitted.
+    ///
+    /// Kept as a domain method rather than a settable property so the source cannot be flipped after
+    /// the fact: how an order arrived is a fact about its history, not a field to edit.
+    /// </summary>
+    public void MarkAsManual() => Source = OrderSource.Manual;
+
     public OrderItem AddItem(
         Guid? productId,
         string productNameSnapshot,
