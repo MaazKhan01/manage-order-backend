@@ -478,6 +478,48 @@ two separate records, so neither seller learns anything about the other's custom
 
 ---
 
+## Order tracking — `POST /api/v1/public/orders/track`
+
+Anonymous. Lets a customer check on an order without an account.
+
+```json
+{ "reference": "DM-2026-K4P7QX", "phone": "0300 1234567" }
+```
+
+**POST, not GET, and the phone is in the body.** A phone number in a query string ends up in access
+logs, browser history and any referrer header the page later sends.
+
+The phone is the entire authorisation model. The reference is printed on the order slip and read out
+over the phone, so it is not a secret and cannot be the only thing required.
+
+**Every failure returns a byte-identical 404** — unknown reference, wrong phone, suspended store, or
+a malformed reference. Distinguishing them would turn the endpoint into an oracle for discovering
+which references exist. Rate limited under the `public-write` policy.
+
+The reference is normalised before lookup: case, spaces and missing hyphens do not matter, and O/I/L
+are corrected to 0/1/1 — the characters people mistype reading a code off paper.
+
+### Deliberately absent from the response
+
+| | Why |
+|---|---|
+| The seller's private notes | A customer must never see "chase her about the deposit" |
+| `changedBy` on the timeline | Who inside the business acted is not the customer's business |
+| The order's `Id` | The platform identifier never reaches a public surface |
+| Reference-photo URLs | The reference is guessable enough that stored images should not become reachable through it |
+
+There are integration tests for the first two.
+
+### The reference itself
+
+`PREFIX-YYYY-XXXXXX`, e.g. `DM-2026-K4P7QX`. The prefix is configurable via
+`Orders__ReferencePrefix`; the suffix is six characters of cryptographic randomness from a
+Crockford-style alphabet with I, L, O and U removed.
+
+**Not sequential.** `Order.OrderNumber` is the seller's own running count and restarts per store, so
+it can neither identify an order platform-wide nor be exposed — a running number in a receipt lets
+anyone count a business's orders and guess its neighbours.
+
 ## Admin — `/api/v1/admin`
 
 Requires the **Admin** role. This is the only part of the API that reads across tenants; everything

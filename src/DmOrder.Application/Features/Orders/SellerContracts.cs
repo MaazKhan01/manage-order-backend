@@ -64,6 +64,8 @@ public sealed record OrderCustomerResponse(
 public sealed record OrderDetailResponse(
     Guid Id,
     int OrderNumber,
+    /// The customer-facing reference. The seller needs it to answer "where is my order?".
+    string Reference,
     string Status,
     string PaymentStatus,
     decimal? TotalAmount,

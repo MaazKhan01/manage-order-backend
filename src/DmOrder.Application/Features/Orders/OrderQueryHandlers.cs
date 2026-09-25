@@ -204,6 +204,7 @@ public sealed class GetOrderHandler(
         return new OrderDetailResponse(
             order.Id,
             order.OrderNumber,
+            order.PublicReference,
             order.Status.ToString(),
             order.PaymentStatus.ToString(),
             order.TotalAmount,
