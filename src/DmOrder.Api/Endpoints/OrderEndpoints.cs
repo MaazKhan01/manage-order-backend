@@ -121,6 +121,24 @@ public static class PublicOrderEndpoints
             .WithName("UploadOrderReferenceImage")
             .WithSummary("A customer's reference photo. Anonymous, so size- and byte-checked.");
 
+        // POST rather than GET, and the phone is in the body rather than the query string. A phone
+        // number in a URL ends up in access logs, browser history and any referrer header the page
+        // later sends - none of which is an acceptable place for a customer's personal data.
+        //
+        // Rate limited like the other anonymous write paths: the reference is short enough that an
+        // unthrottled endpoint would be worth guessing against.
+        group.MapPost("/orders/track", async (
+                TrackOrderRequest request,
+                TrackOrderHandler handler,
+                CancellationToken cancellationToken) =>
+                Results.Ok(await handler.HandleAsync(request, cancellationToken)))
+            .WithValidation<TrackOrderRequest>()
+            .RequireRateLimiting(RateLimitPolicies.PublicWrite)
+            .WithName("TrackOrder")
+            .WithSummary(
+                "Look up an order by its public reference and the phone it was placed with. "
+                + "No account needed. Every failure answers 404 so it cannot be used to probe references.");
+
         return group;
     }
 

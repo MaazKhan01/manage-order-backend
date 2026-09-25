@@ -21,6 +21,7 @@ namespace DmOrder.Application.Features.Orders;
 /// </summary>
 public sealed class SubmitOrderHandler(
     IAppDbContext db,
+    IOrderReferenceFactory references,
     ILogger<SubmitOrderHandler> logger)
 {
     public async Task<SubmitOrderResponse> HandleAsync(
@@ -40,7 +41,8 @@ public sealed class SubmitOrderHandler(
         if (!string.IsNullOrWhiteSpace(request.Website))
         {
             logger.LogInformation("Discarded a honeypot submission for store {StoreId}", store.Id);
-            return new SubmitOrderResponse(0, store.Name, store.WhatsApp);
+            // A generated-looking reference, so the response is indistinguishable from a real one.
+            return new SubmitOrderResponse(0, references.Next(), store.Name, store.WhatsApp);
         }
 
         var product = await db.Products
@@ -86,7 +88,8 @@ public sealed class SubmitOrderHandler(
         logger.LogInformation(
             "Order {OrderNumber} submitted to store {StoreId}", order.OrderNumber, store.Id);
 
-        return new SubmitOrderResponse(order.OrderNumber, store.Name, store.WhatsApp);
+        return new SubmitOrderResponse(
+            order.OrderNumber, order.PublicReference, store.Name, store.WhatsApp);
     }
 
     /// <summary>
@@ -152,9 +155,10 @@ public sealed class SubmitOrderHandler(
         string? clientIpHash,
         CancellationToken cancellationToken)
     {
-        // Retried because two customers can order in the same instant and land on the same number.
-        // The unique index rejects the loser, and taking the next number is the right answer rather
-        // than failing a real order.
+        // Retried because two customers can order in the same instant and land on the same number,
+        // and because a generated reference can - astronomically rarely - already exist. Either
+        // unique index rejects the loser, and trying again is the right answer rather than failing a
+        // real order.
         const int maxAttempts = 5;
 
         for (var attempt = 1; ; attempt++)
@@ -168,6 +172,9 @@ public sealed class SubmitOrderHandler(
                 store.Id,
                 customer.Id,
                 nextNumber + 1,
+                // Regenerated per attempt: retrying with the reference that just collided would
+                // collide forever.
+                references.Next(),
                 ExtractDeliveryDate(validation),
                 request.DeliveryAddress,
                 request.CustomerNote,
@@ -207,7 +214,7 @@ public sealed class SubmitOrderHandler(
                 when (attempt < maxAttempts && IsUniqueViolation(exception))
             {
                 logger.LogInformation(
-                    "Order number collided for store {StoreId}; retrying (attempt {Attempt})",
+                    "Order number or reference collided for store {StoreId}; retrying (attempt {Attempt})",
                     store.Id, attempt);
             }
         }

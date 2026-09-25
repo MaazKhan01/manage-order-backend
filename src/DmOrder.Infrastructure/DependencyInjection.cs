@@ -2,6 +2,7 @@ using DmOrder.Application.Common.Interfaces;
 using DmOrder.Domain.Identity;
 using DmOrder.Infrastructure.Ai;
 using DmOrder.Infrastructure.Identity;
+using DmOrder.Infrastructure.Orders;
 using DmOrder.Infrastructure.Persistence;
 using DmOrder.Infrastructure.Persistence.Interceptors;
 using DmOrder.Infrastructure.Services;
@@ -86,6 +87,10 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IUserDisplayNameLookup, UserDisplayNameLookup>();
         services.AddScoped<IUserDirectory, UserDirectory>();
+
+        services.AddOptions<OrderReferenceOptions>()
+            .Bind(configuration.GetSection(OrderReferenceOptions.SectionName));
+        services.AddScoped<IOrderReferenceFactory, OrderReferenceFactory>();
         services.AddScoped<IdentitySeeder>();
     }
 

@@ -22,4 +22,15 @@ public sealed record SubmitOrderRequest(
 /// What a customer sees after ordering. Deliberately thin: an order number to quote and nothing
 /// that would let someone enumerate or read back orders they did not place.
 /// </summary>
-public sealed record SubmitOrderResponse(int OrderNumber, string StoreName, string? WhatsApp);
+/// <summary>
+/// What the customer sees after submitting.
+///
+/// <c>Reference</c> is the one they need to keep: it is how they track the order later, and the only
+/// order identifier they are ever shown. <c>OrderNumber</c> is the seller's own running count, useful
+/// when the two of them talk.
+/// </summary>
+public sealed record SubmitOrderResponse(
+    int OrderNumber,
+    string Reference,
+    string StoreName,
+    string? WhatsApp);

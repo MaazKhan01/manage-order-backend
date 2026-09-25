@@ -82,9 +82,16 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.CustomerNote).HasMaxLength(2000);
         builder.Property(o => o.SubmittedFromIpHash).HasMaxLength(64);
 
+        builder.Property(o => o.PublicReference).HasMaxLength(24).IsRequired();
+
         // The per-store order number is what makes "#1042" unambiguous, and the unique index is what
         // actually guarantees it when two orders arrive at once.
         builder.HasIndex(o => new { o.StoreId, o.OrderNumber }).IsUnique();
+
+        // Unique platform-wide, not per store: a customer types this into /track without naming a
+        // shop, so the lookup has no tenant to scope by. The index is also what turns a generated
+        // collision into a retryable unique violation rather than two orders sharing a reference.
+        builder.HasIndex(o => o.PublicReference).IsUnique();
 
         // The seller's order list: their store, filtered by status, newest first.
         builder.HasIndex(o => new { o.StoreId, o.Status, o.CreatedAt });

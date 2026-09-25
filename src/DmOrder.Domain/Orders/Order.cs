@@ -26,6 +26,13 @@ public sealed class Order : Entity, ITenantOwned
     /// </summary>
     public int OrderNumber { get; private set; }
 
+    /// <summary>
+    /// The reference a customer uses to look this order up - e.g. DM-2026-K4P7QX. Unique across the
+    /// whole platform, because a customer types it into /track without saying which shop it was.
+    /// Random rather than sequential; see <see cref="OrderReference"/>.
+    /// </summary>
+    public string PublicReference { get; private set; } = null!;
+
     public OrderStatus Status { get; private set; } = OrderStatus.New;
 
     public PaymentStatus PaymentStatus { get; private set; } = PaymentStatus.Unpaid;
@@ -57,6 +64,7 @@ public sealed class Order : Entity, ITenantOwned
         Guid storeId,
         Guid customerId,
         int orderNumber,
+        string publicReference,
         DateOnly? deliveryDate,
         string? deliveryAddress,
         string? customerNote,
@@ -67,11 +75,17 @@ public sealed class Order : Entity, ITenantOwned
             throw new BusinessRuleException("An order number is required.");
         }
 
+        if (!OrderReference.IsWellFormed(publicReference))
+        {
+            throw new BusinessRuleException("A valid public reference is required.");
+        }
+
         return new Order
         {
             StoreId = storeId,
             CustomerId = customerId,
             OrderNumber = orderNumber,
+            PublicReference = publicReference,
             DeliveryDate = deliveryDate,
             DeliveryAddress = Normalise(deliveryAddress),
             CustomerNote = Normalise(customerNote),

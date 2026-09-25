@@ -6,7 +6,15 @@ namespace DmOrder.Domain.Tests.Orders;
 public class OrderStatusTests
 {
     private static Order CreateOrder() =>
-        Order.Create(Guid.CreateVersion7(), Guid.CreateVersion7(), 1, null, null, null, null);
+        Order.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            OrderReference.Generate(OrderReference.DefaultPrefix, 2026),
+            null,
+            null,
+            null,
+            null);
 
     [Fact]
     public void NewOrderStartsUnpaidAndUnactioned()

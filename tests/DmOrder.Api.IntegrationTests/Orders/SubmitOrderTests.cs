@@ -438,7 +438,11 @@ public class SubmitOrderTests(ApiFactory factory) : IntegrationTestBase(factory)
 
 public sealed record FieldPayload(Guid Id, string Label, string FieldType, bool IsRequired, int DisplayOrder);
 
-public sealed record SubmitOrderPayload(int OrderNumber, string StoreName, string? WhatsApp);
+public sealed record SubmitOrderPayload(
+    int OrderNumber,
+    string Reference,
+    string StoreName,
+    string? WhatsApp);
 
 public sealed record ValidationProblemPayload(Dictionary<string, string[]> Errors);
 
