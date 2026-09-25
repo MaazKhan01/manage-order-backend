@@ -1,4 +1,5 @@
 using DmOrder.Application.Common.Interfaces;
+using DmOrder.Domain.Billing;
 using DmOrder.Domain.Catalogue;
 using DmOrder.Domain.Common;
 using DmOrder.Domain.CustomFields;
@@ -43,6 +44,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<OrderNote> OrderNotes => Set<OrderNote>();
 
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
+
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

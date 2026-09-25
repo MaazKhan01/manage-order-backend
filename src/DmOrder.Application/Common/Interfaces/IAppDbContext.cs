@@ -1,3 +1,4 @@
+using DmOrder.Domain.Billing;
 using DmOrder.Domain.Catalogue;
 using DmOrder.Domain.CustomFields;
 using DmOrder.Domain.Media;
@@ -41,6 +42,8 @@ public interface IAppDbContext
     DbSet<OrderNote> OrderNotes { get; }
 
     DbSet<MediaAsset> MediaAssets { get; }
+
+    DbSet<Subscription> Subscriptions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

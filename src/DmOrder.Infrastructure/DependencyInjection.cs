@@ -1,6 +1,7 @@
 using DmOrder.Application.Common.Interfaces;
 using DmOrder.Domain.Identity;
 using DmOrder.Infrastructure.Ai;
+using DmOrder.Infrastructure.Billing;
 using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Orders;
 using DmOrder.Infrastructure.Persistence;
@@ -91,6 +92,13 @@ public static class DependencyInjection
         services.AddOptions<OrderReferenceOptions>()
             .Bind(configuration.GetSection(OrderReferenceOptions.SectionName));
         services.AddScoped<IOrderReferenceFactory, OrderReferenceFactory>();
+
+        services.AddOptions<PlanOptions>().Bind(configuration.GetSection(PlanOptions.SectionName));
+        services.AddSingleton<IPlanPolicy, PlanPolicy>();
+
+        // The only provider that exists. Every call that would take money throws, and IsConfigured
+        // is false so nothing offers an upgrade button that cannot work.
+        services.AddSingleton<IPaymentProvider, UnconfiguredPaymentProvider>();
         services.AddScoped<IdentitySeeder>();
     }
 

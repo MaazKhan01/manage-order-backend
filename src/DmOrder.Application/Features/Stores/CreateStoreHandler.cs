@@ -1,4 +1,5 @@
 using DmOrder.Application.Common.Interfaces;
+using DmOrder.Domain.Billing;
 using DmOrder.Domain.Exceptions;
 using DmOrder.Domain.Stores;
 using FluentValidation;
@@ -11,6 +12,8 @@ public sealed class CreateStoreHandler(
     IAppDbContext db,
     ICurrentUser currentUser,
     IFileStorage storage,
+    IDateTimeProvider clock,
+    IPlanPolicy plan,
     ILogger<CreateStoreHandler> logger)
 {
     public async Task<StoreDetailResponse> HandleAsync(
@@ -36,6 +39,11 @@ public sealed class CreateStoreHandler(
         var store = Store.Create(userId, request.Name, slug, request.Currency);
 
         db.Stores.Add(store);
+
+        // The trial starts here rather than at registration: it measures from the moment there is
+        // something to manage. Saved in the same transaction, so a store can never exist without a
+        // subscription row.
+        db.Subscriptions.Add(Subscription.StartTrial(store.Id, clock.UtcNow, plan.TrialLength));
 
         try
         {

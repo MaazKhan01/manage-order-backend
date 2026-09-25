@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Asp.Versioning.Builder;
+using DmOrder.Api.Common;
 
 namespace DmOrder.Api.Endpoints;
 
@@ -52,12 +53,27 @@ public static class ApiEndpoints
 
         accountApi.MapSellerAccountEndpoints();
 
+        // Free forever. The storefront half of the product: a seller who never pays keeps all of
+        // this, and their page stays public.
         sellerApi.MapSellerStoreEndpoints();
         sellerApi.MapSellerCatalogueEndpoints();
         sellerApi.MapSellerCustomFieldEndpoints();
-        sellerApi.MapSellerOrderEndpoints();
-        sellerApi.MapSellerCustomerEndpoints();
         sellerApi.MapSellerMediaEndpoints();
+        sellerApi.MapSellerSubscriptionEndpoints();
+
+        // Paid. Reading, moving and annotating orders is what the subscription buys, so these two
+        // groups carry the paywall — and carry it at the group level, where it cannot be forgotten
+        // when an endpoint is added.
+        //
+        // Note what is NOT here: submitting an order is on the public API and keeps working. An
+        // expired trial must never stop a customer ordering.
+        var managementApi = api.MapGroup("/seller")
+            .RequireAuthorization(AuthorizationPolicies.Seller)
+            .RequiresOrderManagement()
+            .WithTags("Seller");
+
+        managementApi.MapSellerOrderEndpoints();
+        managementApi.MapSellerCustomerEndpoints();
 
         adminApi.MapAdminEndpoints();
 

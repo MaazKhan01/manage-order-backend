@@ -26,6 +26,10 @@ public static class DependencyInjection
             services.AddScoped(handlerType);
         }
 
+        // Not a *Handler, so the convention above does not pick it up. It is the paywall, so it is
+        // registered explicitly rather than renamed to fit a naming rule.
+        services.AddScoped<Features.Billing.SubscriptionGuard>();
+
         return services;
     }
 }

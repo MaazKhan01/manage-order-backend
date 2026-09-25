@@ -1,5 +1,6 @@
 using DmOrder.Application.Common.Interfaces;
 using DmOrder.Application.Common.Models;
+using DmOrder.Application.Features.Billing;
 using DmOrder.Domain.Catalogue;
 using DmOrder.Domain.Exceptions;
 using FluentValidation;
@@ -120,13 +121,21 @@ public sealed class GetProductHandler(IAppDbContext db, ICurrentUser currentUser
     }
 }
 
-public sealed class CreateProductHandler(IAppDbContext db, ICurrentUser currentUser, IFileStorage storage)
+public sealed class CreateProductHandler(
+    IAppDbContext db,
+    ICurrentUser currentUser,
+    IFileStorage storage,
+    SubscriptionGuard subscriptions)
 {
     public async Task<ProductDetailResponse> HandleAsync(
         CreateProductRequest request,
         CancellationToken cancellationToken)
     {
         var storeId = await StoreScope.RequireStoreIdAsync(db, currentUser, cancellationToken);
+
+        // Checked before any work: the free plan caps how many products a store publishes. Deleting
+        // is always allowed, and products already over a limit are never hidden or removed.
+        await subscriptions.RequireProductHeadroomAsync(storeId, cancellationToken);
 
         var slug = CatalogueSlug.Normalise(
             string.IsNullOrWhiteSpace(request.Slug) ? CatalogueSlug.Suggest(request.Name) : request.Slug);

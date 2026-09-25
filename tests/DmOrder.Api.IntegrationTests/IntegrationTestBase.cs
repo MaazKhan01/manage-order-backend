@@ -72,3 +72,6 @@ public sealed record PagedPayload<T>(
     int TotalCount,
     int TotalPages,
     bool HasNextPage);
+
+/// <summary>Just enough of a created product to drive the next call. Shared by several suites.</summary>
+public sealed record ProductPayload(Guid Id, string Slug);

@@ -202,8 +202,6 @@ public sealed class TrackOrderTests(ApiFactory factory) : IntegrationTestBase(fa
     }
 }
 
-public sealed record ProductPayload(Guid Id, string Slug);
-
 public sealed record SellerOrderPayload(Guid Id, int OrderNumber);
 
 public sealed record TrackedOrderPayload(

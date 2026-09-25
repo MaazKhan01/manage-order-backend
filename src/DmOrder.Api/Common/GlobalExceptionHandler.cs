@@ -1,4 +1,5 @@
 using DmOrder.Application.Common.Exceptions;
+using DmOrder.Application.Features.Billing;
 using DmOrder.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -71,6 +72,18 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         ForbiddenException forbidden => Problem(
             StatusCodes.Status403Forbidden, "Forbidden.", forbidden.Message, httpContext),
 
+        // 402 rather than 403: "you need a subscription" and "you are not allowed" are different
+        // answers with different remedies, and the dashboard has to tell them apart to show the
+        // upgrade screen instead of an error. The reason code is what it branches on - never the
+        // prose, which is written for people.
+        PaymentRequiredException payment => WithReason(
+            Problem(
+                StatusCodes.Status402PaymentRequired,
+                "A subscription is required.",
+                payment.Message,
+                httpContext),
+            payment.Reason),
+
         UnauthorizedAccessException => Problem(
             StatusCodes.Status401Unauthorized, "Unauthorized.", "Authentication is required.", httpContext),
 
@@ -93,6 +106,13 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             "The request could not be completed. Quote the traceId when reporting this.",
             httpContext),
     };
+
+    /// <summary>Attaches the machine-readable reason a client branches on.</summary>
+    private static ProblemDetails WithReason(ProblemDetails problem, string reason)
+    {
+        problem.Extensions["reason"] = reason;
+        return problem;
+    }
 
     private static ProblemDetails Problem(int status, string title, string detail, HttpContext httpContext) =>
         new()
