@@ -23,7 +23,8 @@ public static class OrderDraftMapper
         OrderDraft draft,
         IReadOnlyList<DraftProduct> products,
         IReadOnlyList<CustomField> questions,
-        string? normalisedPhone)
+        string? normalisedPhone,
+        DateOnly today)
     {
         // The reader returns a product name. Resolving it to an id happens here, against this
         // store's catalogue, so an invented name becomes a one-off rather than a foreign product.
@@ -41,7 +42,7 @@ public static class OrderDraftMapper
             CustomerName: Trimmed(draft.CustomerName),
             CustomerPhone: normalisedPhone,
             DeliveryAddress: Trimmed(draft.DeliveryAddress),
-            DeliveryDate: draft.DeliveryDate,
+            DeliveryDate: FutureOnly(draft.DeliveryDate, today),
             CustomerNote: Trimmed(draft.CustomerNote),
             Answers: MatchAnswers(draft.Answers, questions),
             Missing: MissingFields(matched?.Id, productName, Trimmed(draft.CustomerName), normalisedPhone),
@@ -105,6 +106,22 @@ public static class OrderDraftMapper
 
         return matched;
     }
+
+    /// <summary>
+    /// Drops a delivery date that has already passed.
+    ///
+    /// Relative dates are the one thing the model is measurably bad at here. Asked to resolve
+    /// "Thursday" it has returned both a Wednesday and, once the weekday was spelled out for it, the
+    /// Thursday that had already gone. Prompt wording moved the error around rather than removing
+    /// it, so the direction is decided here instead.
+    ///
+    /// Dropping it is the right failure. A customer asking for something is asking for a day still
+    /// to come, and an empty date box costs the seller one tap - while a date that is quietly four
+    /// days early reaches the customer as a missed deadline. The manual form still accepts any date
+    /// the seller types, including past ones, because a recorded-after-the-fact order is real.
+    /// </summary>
+    private static DateOnly? FutureOnly(DateOnly? date, DateOnly today) =>
+        date is { } value && value >= today ? value : null;
 
     private static string? Trimmed(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -33,7 +33,7 @@ public sealed class OrderDraftMapperTests
     [Fact]
     public void A_product_name_from_the_catalogue_resolves_to_its_id()
     {
-        var result = OrderDraftMapper.Map(Draft("Linen Tote Bag"), Catalogue, [], "+923001234567");
+        var result = MapAt(Draft("Linen Tote Bag"), Catalogue, [], "+923001234567");
 
         result.ProductId.ShouldBe(ToteId);
         result.ProductName.ShouldBe("Linen Tote Bag");
@@ -47,7 +47,7 @@ public sealed class OrderDraftMapperTests
     public void Matching_a_product_ignores_case_and_surrounding_space(string written)
     {
         // The model echoes what the customer wrote as often as what the catalogue says.
-        OrderDraftMapper.Map(Draft(written), Catalogue, [], "+923001234567")
+        MapAt(Draft(written), Catalogue, [], "+923001234567")
             .ProductId.ShouldBe(ToteId);
     }
 
@@ -56,7 +56,7 @@ public sealed class OrderDraftMapperTests
     {
         // Custom work is a real order. "Three-tier wedding cake" is not in any catalogue and must
         // still reach the seller as something they can record.
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Three-tier wedding cake"), Catalogue, [], "+923001234567");
 
         result.ProductId.ShouldBeNull();
@@ -67,7 +67,7 @@ public sealed class OrderDraftMapperTests
     [Fact]
     public void No_product_at_all_is_reported_as_missing()
     {
-        var result = OrderDraftMapper.Map(Draft(productName: null), Catalogue, [], "+923001234567");
+        var result = MapAt(Draft(productName: null), Catalogue, [], "+923001234567");
 
         result.ProductId.ShouldBeNull();
         result.Missing.ShouldContain("product");
@@ -78,7 +78,7 @@ public sealed class OrderDraftMapperTests
     {
         // Guards against a substring match being introduced later. "Not the Linen Tote Bag" must
         // not silently become an order for one.
-        OrderDraftMapper.Map(Draft("Not the Linen Tote Bag"), Catalogue, [], "+923001234567")
+        MapAt(Draft("Not the Linen Tote Bag"), Catalogue, [], "+923001234567")
             .ProductId.ShouldBeNull();
     }
 
@@ -90,14 +90,14 @@ public sealed class OrderDraftMapperTests
     {
         // The seller sees an empty box and fills it in. Showing an out-of-range number would only
         // produce a save that fails validation.
-        OrderDraftMapper.Map(Draft("Linen Tote Bag", quantity), Catalogue, [], "+923001234567")
+        MapAt(Draft("Linen Tote Bag", quantity), Catalogue, [], "+923001234567")
             .Quantity.ShouldBeNull();
     }
 
     [Fact]
     public void A_missing_phone_is_reported_because_it_is_how_the_order_is_tracked()
     {
-        var result = OrderDraftMapper.Map(Draft("Linen Tote Bag"), Catalogue, [], null);
+        var result = MapAt(Draft("Linen Tote Bag"), Catalogue, [], null);
 
         result.CustomerPhone.ShouldBeNull();
         result.Missing.ShouldContain("customerPhone");
@@ -106,7 +106,7 @@ public sealed class OrderDraftMapperTests
     [Fact]
     public void A_missing_customer_name_is_reported()
     {
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", customerName: "   "), Catalogue, [], "+923001234567");
 
         result.CustomerName.ShouldBeNull();
@@ -118,7 +118,7 @@ public sealed class OrderDraftMapperTests
     {
         var size = Question("Size", ["Small", "Large"]);
 
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", answers: [new DraftAnswer("size", "Large")]),
             Catalogue,
             [size],
@@ -134,7 +134,7 @@ public sealed class OrderDraftMapperTests
     public void An_answer_to_a_question_the_seller_never_asked_is_dropped()
     {
         // The clearest case of not trusting the reader: it may invent a question entirely.
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", answers: [new DraftAnswer("Discount code", "FREE100")]),
             Catalogue,
             [Question("Size", ["Small", "Large"])],
@@ -146,7 +146,7 @@ public sealed class OrderDraftMapperTests
     [Fact]
     public void An_option_the_seller_does_not_offer_is_dropped()
     {
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", answers: [new DraftAnswer("Size", "Enormous")]),
             Catalogue,
             [Question("Size", ["Small", "Large"])],
@@ -160,7 +160,7 @@ public sealed class OrderDraftMapperTests
     {
         var note = Question("Message on the card", []);
 
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", answers: [new DraftAnswer("Message on the card", "Happy birthday")]),
             Catalogue,
             [note],
@@ -175,7 +175,7 @@ public sealed class OrderDraftMapperTests
     {
         var size = Question("Size", ["Small", "Large"]);
 
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", answers:
             [
                 new DraftAnswer("Size", "Small"),
@@ -192,7 +192,7 @@ public sealed class OrderDraftMapperTests
     [Fact]
     public void Blank_answers_are_not_offered()
     {
-        var result = OrderDraftMapper.Map(
+        var result = MapAt(
             Draft("Linen Tote Bag", answers: [new DraftAnswer("Message on the card", "   ")]),
             Catalogue,
             [Question("Message on the card", [])],
@@ -204,12 +204,52 @@ public sealed class OrderDraftMapperTests
     [Fact]
     public void A_store_with_an_empty_catalogue_still_produces_a_usable_draft()
     {
-        var result = OrderDraftMapper.Map(Draft("A birthday cake"), [], [], "+923001234567");
+        var result = MapAt(Draft("A birthday cake"), [], [], "+923001234567");
 
         result.ProductId.ShouldBeNull();
         result.ProductName.ShouldBe("A birthday cake");
         result.Missing.ShouldBeEmpty();
     }
+
+
+    [Fact]
+    public void A_delivery_date_in_the_past_is_dropped()
+    {
+        // The model's weakest point, found on the first real message: asked to resolve "Thursday"
+        // it returned the Thursday that had already gone. A date four days early reaches the
+        // customer as a missed deadline; an empty box costs the seller one tap.
+        var draft = Draft("Linen Tote Bag") with { DeliveryDate = new DateOnly(2026, 9, 24) };
+
+        MapAt(draft, Catalogue, [], "+923001234567").DeliveryDate.ShouldBeNull();
+    }
+
+    [Fact]
+    public void A_delivery_date_of_today_is_kept()
+    {
+        // Same-day is an ordinary order, not a mistake.
+        var draft = Draft("Linen Tote Bag") with { DeliveryDate = Today };
+
+        MapAt(draft, Catalogue, [], "+923001234567").DeliveryDate.ShouldBe(Today);
+    }
+
+    [Fact]
+    public void A_delivery_date_in_the_future_is_kept()
+    {
+        var thursday = new DateOnly(2026, 10, 1);
+        var draft = Draft("Linen Tote Bag") with { DeliveryDate = thursday };
+
+        MapAt(draft, Catalogue, [], "+923001234567").DeliveryDate.ShouldBe(thursday);
+    }
+
+    private static readonly DateOnly Today = new(2026, 9, 26);
+
+    /// <summary>The mapper with a fixed today, so date rules are testable without a clock.</summary>
+    private static OrderDraftResponse MapAt(
+        OrderDraft draft,
+        IReadOnlyList<DraftProduct> products,
+        IReadOnlyList<CustomField> questions,
+        string? phone) =>
+        OrderDraftMapper.Map(draft, products, questions, phone, Today);
 
     private static CustomField Question(string label, string[] options)
     {

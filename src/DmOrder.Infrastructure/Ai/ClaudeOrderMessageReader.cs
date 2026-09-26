@@ -91,6 +91,20 @@ public sealed class ClaudeOrderMessageReader : IOrderMessageReader
             ? date
             : null;
 
+    /// <summary>
+    /// Today, with its weekday spelled out.
+    ///
+    /// The date alone is not enough. Asked to resolve "Thursday" from "2026-09-26", the model has to
+    /// work out that the 26th is a Saturday before it can count forward - and it gets that wrong:
+    /// the first real message tested returned the 30th, which is a Wednesday. Naming the weekday
+    /// removes the arithmetic and leaves only the counting.
+    ///
+    /// Invariant culture so the day name is English regardless of the server's locale; the prompt
+    /// is written in English and a German "Samstag" would sit oddly inside it.
+    /// </summary>
+    private static string Today(OrderMessageContext context) =>
+        context.Today.ToString("dddd, yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
     private static string SystemPrompt(OrderMessageContext context)
     {
         var products = context.Products.Count == 0
@@ -120,19 +134,25 @@ public sealed class ClaudeOrderMessageReader : IOrderMessageReader
             THE SELLER'S OWN QUESTIONS:
             {questions}
 
-            Today is {context.Today:yyyy-MM-dd}. The seller's currency is {context.Currency}.
+            Today is {Today(context)}. The seller's currency is {context.Currency}.
             The seller is in: {context.StoreCountry ?? "(not set)"}.
 
             Extract only what the message actually says.
 
             - Leave a field null when the message does not say. A guess that looks like a fact is
               worse than an empty box the seller fills in - they can see an empty box.
-            - productName: copy a product name from the list above EXACTLY if the customer clearly
-              means it. If they describe something the seller does not list, write their description
-              instead. Never invent a product that is not in the list and not described.
+            - productName: if the customer clearly means something on the list, copy that name from
+              the list EXACTLY. If they name or describe something that is NOT on the list, write
+              what they called it anyway - sellers take custom orders all the time, and "a diamond
+              necklace" or "a three-tier cake" is a real order even when it is not in the catalogue.
+              Only leave this null when the message does not say what they want at all.
             - customerPhone: E.164 with country code, e.g. +923001234567. Use the seller's country
               to expand a local number. Null if the message contains no phone number.
-            - deliveryDate: yyyy-MM-dd. Resolve "Thursday" or "tomorrow" against today's date above.
+            - deliveryDate: yyyy-MM-dd, and it must be today or later - never a date in the past.
+              A customer asking for something is asking for a day still to come. Count FORWARD from
+              today. If today is Saturday 2026-09-26 and they say "Thursday", that is 2026-10-01,
+              not 2026-09-24. Check the date you write falls on the weekday they named and is not
+              behind today's date.
             - answers: only for the seller's own questions listed above, matching questionLabel
               exactly. For a question with a fixed list, the value must be one of its options.
             - suggestedReply: a short, warm reply the seller can send, IN THE SAME LANGUAGE AND

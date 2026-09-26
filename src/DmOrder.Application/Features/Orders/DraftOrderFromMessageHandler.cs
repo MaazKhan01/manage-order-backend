@@ -116,7 +116,8 @@ public sealed class DraftOrderFromMessageHandler(
             draft,
             [.. products.Select(p => new DraftProduct(p.Id, p.Name, p.Price))],
             questions,
-            NormalisePhone(draft.CustomerPhone, store.Country));
+            NormalisePhone(draft.CustomerPhone, store.Country),
+            DateOnly.FromDateTime(clock.UtcNow.UtcDateTime));
     }
 
     /// <summary>Enough catalogue to match against without sending a whole shop on every call.</summary>

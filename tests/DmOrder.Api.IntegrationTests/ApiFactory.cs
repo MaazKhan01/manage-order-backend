@@ -48,6 +48,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // Never let a stray .env seed an admin into the test database.
         Environment.SetEnvironmentVariable("SEED_ADMIN_EMAIL", string.Empty);
         Environment.SetEnvironmentVariable("SEED_ADMIN_PASSWORD", string.Empty);
+
+        // Never let a developer's real API key turn the suite into a billed network call. With a key
+        // present the draft-from-message endpoint would contact Anthropic for real: slow, flaky,
+        // chargeable, and it would silently invert the "no provider configured" test.
+        Environment.SetEnvironmentVariable("Claude__ApiKey", string.Empty);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -65,6 +70,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 ["PlatformBranding:ProjectName"] = "DM Order",
                 ["PlatformBranding:ProjectShortName"] = "DMO",
                 ["Seed:AdminEmail"] = null,
+                ["Claude:ApiKey"] = null,
                 ["Seed:AdminPassword"] = null,
 
                 // TestServer gives every request a null remote address, so the whole suite shares one
