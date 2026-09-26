@@ -28,8 +28,7 @@ public static class DependencyInjection
         AddIdentity(services, configuration);
         AddFileStorage(services, configuration);
 
-        // No AI feature ships in V1; the seam exists so adding one later is a one-line swap.
-        services.AddScoped<IAiService, NotConfiguredAiService>();
+        AddAi(services, configuration);
 
         return services;
     }
@@ -116,5 +115,32 @@ public static class DependencyInjection
         // Only the local provider exists today. The S3-compatible implementation is added in the
         // deployment phase and selected here by FileStorage:Provider.
         services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+    }
+
+    /// <summary>
+    /// Reading pasted messages into draft orders.
+    ///
+    /// An unset key selects the not-configured reader rather than failing at startup. Deploying
+    /// without AI is a supported state: the endpoint answers 503, the dashboard hides the button,
+    /// and nothing else in the product is affected. Same shape as the payment provider.
+    /// </summary>
+    private static void AddAi(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(ClaudeOptions.SectionName);
+
+        services.AddOptions<ClaudeOptions>()
+            .Bind(section)
+            .ValidateOnStart();
+
+        var configured = !string.IsNullOrWhiteSpace(section[nameof(ClaudeOptions.ApiKey)]);
+
+        if (configured)
+        {
+            services.AddSingleton<IOrderMessageReader, ClaudeOrderMessageReader>();
+        }
+        else
+        {
+            services.AddSingleton<IOrderMessageReader, NotConfiguredOrderMessageReader>();
+        }
     }
 }

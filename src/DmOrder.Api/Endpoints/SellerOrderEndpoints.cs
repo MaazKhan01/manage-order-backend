@@ -37,6 +37,20 @@ public static class SellerOrderEndpoints
                 "Record an order that arrived some other way - a DM, a call, a conversation at a stall. "
                 + "Gets a public reference like any other, so the customer can still track it.");
 
+        orders.MapPost("/draft-from-message", async (
+                DraftOrderRequest request,
+                DraftOrderFromMessageHandler handler,
+                CancellationToken cancellationToken) =>
+                Results.Ok(await handler.HandleAsync(request, cancellationToken)))
+            .WithValidation<DraftOrderRequest>()
+            // Its own limiter, tighter than the rest of the API. A subscription pays for order
+            // management, not for an unbounded number of model calls on our account.
+            .RequireRateLimiting(RateLimitPolicies.AiDrafting)
+            .WithName("DraftOrderFromMessage")
+            .WithSummary(
+                "Read a pasted customer message into a draft order. Creates nothing - the seller "
+                + "reviews the draft and submits it through the ordinary create-order endpoint.");
+
         orders.MapGet("/counts", async (GetOrderCountsHandler handler, CancellationToken cancellationToken) =>
                 Results.Ok(await handler.HandleAsync(cancellationToken)))
             .WithName("GetOrderCounts")

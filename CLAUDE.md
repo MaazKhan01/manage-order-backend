@@ -40,6 +40,9 @@ expressed through `CustomField` / `CustomFieldOption`, which is precisely why th
 
 ## Out of scope for V1
 
-Cart, inventory, payments, shipping, reviews, loyalty, analytics, WhatsApp/Instagram integrations, AI
-features, microservices, message queues, Redis, Kubernetes. Introducing any of those requires an ADR
-stating the requirement that forced it.
+Cart, inventory, payments, shipping, reviews, loyalty, analytics, WhatsApp/Instagram integrations,
+microservices, message queues, Redis, Kubernetes. Introducing any of those requires an ADR stating
+the requirement that forced it.
+
+AI is **in** scope, for one feature only: reading a pasted customer message into a draft order
+(ADR 0009). It drafts; it never writes. Any other AI feature needs its own ADR.

@@ -7,6 +7,9 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
+  <ItemGroup Label="AI">
+    <PackageVersion Include="Anthropic" Version="12.50.0" />
+  </ItemGroup>
   <ItemGroup Label="ASP.NET Core / API">
     <PackageVersion Include="libphonenumber-csharp" Version="9.0.40" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />

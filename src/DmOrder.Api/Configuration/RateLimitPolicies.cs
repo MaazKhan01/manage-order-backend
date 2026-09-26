@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using DmOrder.Domain.Identity;
 
 namespace DmOrder.Api.Endpoints;
 
@@ -16,6 +17,13 @@ public static class RateLimitPolicies
 
     /// <summary>Anonymous order submission from a storefront. Applied in Phase 5.</summary>
     public const string PublicWrite = "public-write";
+
+    /// <summary>
+    /// Reading a pasted message into a draft order. Every call spends real money with a model
+    /// provider, so this is limited separately and more tightly than the rest of the seller API —
+    /// and per seller rather than per IP, because the cost follows the account, not the address.
+    /// </summary>
+    public const string AiDrafting = "ai-drafting";
 }
 
 public sealed class RateLimitingOptions
@@ -33,6 +41,16 @@ public sealed class RateLimitingOptions
 
     [Range(1, 3600)]
     public int PublicWriteWindowSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Drafts per seller per window. Twenty an hour is far more than a seller transcribing real
+    /// messages will use, and far less than a loop can spend before anyone notices.
+    /// </summary>
+    [Range(1, 1000)]
+    public int AiDraftingPermitLimit { get; set; } = 20;
+
+    [Range(1, 86_400)]
+    public int AiDraftingWindowSeconds { get; set; } = 3600;
 }
 
 public static class RateLimitingSetup
@@ -79,6 +97,21 @@ public static class RateLimitingSetup
                         QueueLimit = 0,
                     });
             });
+
+            options.AddPolicy(RateLimitPolicies.AiDrafting, context =>
+            {
+                var limits = context.RequestServices
+                    .GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    SellerKey(context),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = limits.AiDraftingPermitLimit,
+                        Window = TimeSpan.FromSeconds(limits.AiDraftingWindowSeconds),
+                        QueueLimit = 0,
+                    });
+            });
         });
 
         return services;
@@ -93,4 +126,16 @@ public static class RateLimitingSetup
     /// </summary>
     private static string ClientKey(HttpContext context) =>
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    /// <summary>
+    /// Partition by the authenticated seller.
+    ///
+    /// IP is the wrong key for a cost limit: two sellers sharing an office would share a budget,
+    /// and one seller moving between wifi and mobile data would get a fresh one. Falls back to IP
+    /// only so an unauthenticated request cannot land in an empty partition - the endpoint itself
+    /// requires authentication.
+    /// </summary>
+    private static string SellerKey(HttpContext context) =>
+        context.User.FindFirst(AppClaimTypes.UserId)?.Value
+        ?? $"anon:{ClientKey(context)}";
 }

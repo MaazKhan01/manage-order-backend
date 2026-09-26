@@ -1,5 +1,6 @@
 using DmOrder.Application.Common.Exceptions;
 using DmOrder.Application.Features.Billing;
+using DmOrder.Application.Features.Orders;
 using DmOrder.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -83,6 +84,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 payment.Message,
                 httpContext),
             payment.Reason),
+
+        // 503, not 500: no AI provider configured is a deployment fact, not a fault. The dashboard
+        // hides the button when it knows, and this is the answer if it asks anyway.
+        OrderMessageReaderNotConfiguredException => Problem(
+            StatusCodes.Status503ServiceUnavailable,
+            "Not available.",
+            "Reading messages into orders is not switched on.",
+            httpContext),
 
         UnauthorizedAccessException => Problem(
             StatusCodes.Status401Unauthorized, "Unauthorized.", "Authentication is required.", httpContext),
