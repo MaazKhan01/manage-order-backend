@@ -8,6 +8,9 @@
   <ItemGroup>
     <PackageReference Include="Anthropic" />
     <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="SkiaSharp" />
+    <!-- The native Skia binary for Linux containers; the Windows one comes in with SkiaSharp. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />

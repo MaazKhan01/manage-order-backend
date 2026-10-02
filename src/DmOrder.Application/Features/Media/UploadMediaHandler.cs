@@ -12,6 +12,7 @@ public sealed class UploadMediaHandler(
     IAppDbContext db,
     ICurrentUser currentUser,
     IFileStorage storage,
+    IImageOptimizer images,
     ILogger<UploadMediaHandler> logger)
 {
     /// <summary>Hard ceiling regardless of what the storage provider allows.</summary>
@@ -61,22 +62,39 @@ public sealed class UploadMediaHandler(
         {
             // The declared content type is ignored entirely — only the bytes decide.
             logger.LogWarning("Rejected upload to store {StoreId}: not a supported image", store.Id);
-            throw new BusinessRuleException("Upload a JPEG, PNG, WebP or AVIF image.");
+            throw new BusinessRuleException("Upload a JPEG, PNG or WebP image.");
         }
 
+        /*
+         * Re-encoded before it is stored, never after.
+         *
+         * Nothing reaches the bucket in the shape it arrived: the image is resized, re-encoded as
+         * WebP and stripped of its metadata. The metadata is the part that matters - a phone
+         * photograph carries GPS coordinates, and a seller shooting a product at home would
+         * otherwise publish where they live.
+         *
+         * A null here means the bytes passed the magic-number check but could not actually be
+         * decoded - a truncated file, or a header glued to something else. It is refused rather
+         * than stored as-is, because storing it would be storing exactly the thing we cannot
+         * inspect.
+         */
+        using var optimised = await images.OptimiseAsync(buffer, cancellationToken)
+            ?? throw new BusinessRuleException(
+                "That image could not be read. Try saving it again as a JPEG or PNG.");
+
         var stored = await storage.SaveAsync(
-            buffer,
-            // The stored name is generated from the *detected* type, never from the uploaded filename.
-            $"upload{inspection.Extension}",
-            inspection.ContentType!,
+            optimised.Content,
+            // The stored name is generated, never taken from the upload.
+            $"upload{optimised.Extension}",
+            optimised.ContentType,
             $"stores/{store.Id}/{purpose.ToString().ToLowerInvariant()}",
             cancellationToken);
 
         var asset = MediaAsset.Create(
             store.Id,
             stored.StorageKey,
-            inspection.ContentType!,
-            buffer.Length,
+            optimised.ContentType,
+            stored.SizeBytes,
             SanitiseFileName(fileName),
             purpose,
             currentUser.UserId);

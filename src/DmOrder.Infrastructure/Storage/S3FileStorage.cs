@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using DmOrder.Application.Common.Interfaces;
@@ -47,6 +48,24 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
             // R2 ignores the region but SigV4 still needs one to sign with; "auto" is what
             // Cloudflare documents.
             AuthenticationRegion = string.IsNullOrWhiteSpace(options.S3Region) ? "auto" : options.S3Region,
+
+            /*
+             * The AWS SDK v4 attaches a CRC32 checksum to every upload by default, and sends it as a
+             * chunked *trailer* once the body is big enough to stream. R2 does not implement HTTP
+             * trailers: the request simply never completes, and the call sits there until something
+             * cancels it.
+             *
+             * That is a nasty failure mode, because it is size-dependent - a small logo uploads
+             * fine and a real photograph hangs for fifteen seconds and then 500s, which looks like
+             * a network problem rather than a protocol one. Same root cause as the payload-signing
+             * trailer below.
+             *
+             * WhenRequired keeps checksums for the operations that genuinely need them and drops the
+             * opportunistic ones. Integrity is still covered: TLS protects the bytes in transit, and
+             * S3 returns an ETag we could verify against if we ever wanted belt and braces.
+             */
+            RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+            ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
         };
 
         return new AmazonS3Client(options.S3AccessKeyId, options.S3SecretAccessKey, config);

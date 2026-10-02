@@ -4,6 +4,7 @@ using DmOrder.Infrastructure.Ai;
 using DmOrder.Infrastructure.Billing;
 using DmOrder.Infrastructure.Email;
 using DmOrder.Infrastructure.Identity;
+using DmOrder.Infrastructure.Media;
 using DmOrder.Infrastructure.Orders;
 using DmOrder.Infrastructure.Persistence;
 using DmOrder.Infrastructure.Phones;
@@ -31,6 +32,15 @@ public static class DependencyInjection
 
         AddAi(services, configuration);
         AddEmail(services, configuration);
+
+        services.AddOptions<ImageOptimizerOptions>()
+            .Bind(configuration.GetSection(ImageOptimizerOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Not optional and not configurable away: an image that is not re-encoded is an image whose
+        // EXIF - including GPS - would be published as uploaded.
+        services.AddSingleton<IImageOptimizer, SkiaImageOptimizer>();
 
         return services;
     }

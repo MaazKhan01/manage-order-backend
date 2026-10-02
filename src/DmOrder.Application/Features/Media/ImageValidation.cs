@@ -9,6 +9,11 @@ namespace DmOrder.Application.Features.Media;
 ///
 /// SVG is deliberately not supported: it is a document format that can carry script, and serving one
 /// from the storefront's origin would be a stored XSS.
+///
+/// AVIF is not supported either, for a quieter reason: our image pipeline cannot decode it, so it
+/// could not be stripped of metadata or re-encoded, and accepting a format we cannot open means
+/// publishing whatever is inside it. Every browser that reads AVIF also reads WebP, so nothing is
+/// lost by asking for one of the three we can process.
 /// </summary>
 public static class ImageValidation
 {
@@ -18,7 +23,6 @@ public static class ImageValidation
             ["image/jpeg"] = ".jpg",
             ["image/png"] = ".png",
             ["image/webp"] = ".webp",
-            ["image/avif"] = ".avif",
         };
 
     public static ImageInspection Inspect(ReadOnlySpan<byte> header)
@@ -43,15 +47,6 @@ public static class ImageValidation
             && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P')
         {
             return new ImageInspection(true, "image/webp", ".webp");
-        }
-
-        // ISO-BMFF container with an AVIF brand: bytes 4..8 are "ftyp", then the major brand.
-        if (header.Length >= 12
-            && header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p'
-            && header[8] == 'a' && header[9] == 'v' && header[10] == 'i'
-            && (header[11] == 'f' || header[11] == 's'))
-        {
-            return new ImageInspection(true, "image/avif", ".avif");
         }
 
         return new ImageInspection(false, null, null);
