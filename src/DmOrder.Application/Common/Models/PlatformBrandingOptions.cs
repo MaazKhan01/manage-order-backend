@@ -18,10 +18,10 @@ public sealed class PlatformBrandingOptions
     public const string SectionName = "PlatformBranding";
 
     [Required]
-    public string ProjectName { get; set; } = "DM Order";
+    public string ProjectName { get; set; } = "Ordviz";
 
     [Required]
-    public string ProjectShortName { get; set; } = "DMO";
+    public string ProjectShortName { get; set; } = "Ordviz";
 
     public string ProjectDescription { get; set; } =
         "A mini storefront and order manager for sellers who sell through social media.";

@@ -25,6 +25,7 @@ public static class EnvironmentVariableMappings
         ("OBJECT_STORAGE_REGION", "FileStorage:S3Region"),
         ("FILE_STORAGE_PROVIDER", "FileStorage:Provider"),
         ("FILE_STORAGE_PUBLIC_BASE_URL", "FileStorage:PublicBaseUrl"),
+        ("ORDER_REFERENCE_PREFIX", "Orders:ReferencePrefix"),
         ("PLATFORM_URL", "PlatformBranding:PlatformUrl"),
         ("PROJECT_NAME", "PlatformBranding:ProjectName"),
         ("PROJECT_SHORT_NAME", "PlatformBranding:ProjectShortName"),

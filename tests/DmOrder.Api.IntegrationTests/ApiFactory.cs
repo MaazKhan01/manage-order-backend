@@ -70,6 +70,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             Environment.SetEnvironmentVariable(name, string.Empty);
         }
 
+        // Pinned so the suite asserts against a known prefix rather than whatever the developer's
+        // .env happens to say. Renaming the product must not turn the test suite red.
+        Environment.SetEnvironmentVariable("ORDER_REFERENCE_PREFIX", "DM");
+        Environment.SetEnvironmentVariable("Orders__ReferencePrefix", "DM");
+
         // Uploads go to a throwaway folder on disk, never to the real bucket.
         Environment.SetEnvironmentVariable("FILE_STORAGE_PROVIDER", "LocalDisk");
         Environment.SetEnvironmentVariable("FileStorage__Provider", "LocalDisk");
@@ -94,6 +99,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 ["Email:ApiKey"] = null,
                 ["Email:FromAddress"] = null,
                 ["FileStorage:Provider"] = "LocalDisk",
+                ["Orders:ReferencePrefix"] = "DM",
                 ["Seed:AdminPassword"] = null,
 
                 // TestServer gives every request a null remote address, so the whole suite shares one

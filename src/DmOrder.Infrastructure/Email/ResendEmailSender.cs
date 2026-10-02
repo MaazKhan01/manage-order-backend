@@ -26,7 +26,7 @@ public sealed class EmailOptions
     /// </summary>
     public string? FromAddress { get; set; }
 
-    public string FromName { get; set; } = "DM Order";
+    public string FromName { get; set; } = "Ordviz";
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(FromAddress);
