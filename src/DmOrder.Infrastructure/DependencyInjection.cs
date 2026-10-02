@@ -156,7 +156,9 @@ public static class DependencyInjection
 
         services.AddOptions<EmailOptions>()
             .Bind(section)
-            .ValidateDataAnnotations()
+            .Validate(
+                options => !options.ValidateSender().Any(),
+                "Email:FromAddress must be a valid address when an API key is set.")
             .ValidateOnStart();
 
         var configured = !string.IsNullOrWhiteSpace(section[nameof(EmailOptions.ApiKey)])

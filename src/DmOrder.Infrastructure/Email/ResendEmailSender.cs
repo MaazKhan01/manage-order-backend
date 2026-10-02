@@ -19,13 +19,32 @@ public sealed class EmailOptions
     /// rejected - which is why this is checked at startup rather than discovered by a locked-out
     /// seller.
     /// </summary>
-    [EmailAddress]
+    /// <summary>
+    /// Not annotated with [EmailAddress]: that attribute passes null but fails an empty string, and
+    /// empty is how an unconfigured deployment - and the test host - says "no email provider". The
+    /// address is checked below, only once there is one to check.
+    /// </summary>
     public string? FromAddress { get; set; }
 
     public string FromName { get; set; } = "DM Order";
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(FromAddress);
+
+    /// <summary>
+    /// A configured sender must have a usable From address. An unconfigured one is left alone -
+    /// shipping without email is supported, shipping with a malformed sender is not.
+    /// </summary>
+    public IEnumerable<ValidationResult> ValidateSender()
+    {
+        if (!IsConfigured) yield break;
+
+        if (!new EmailAddressAttribute().IsValid(FromAddress))
+        {
+            yield return new ValidationResult(
+                "Email:FromAddress must be a valid address on a domain verified with the provider.");
+        }
+    }
 }
 
 /// <summary>

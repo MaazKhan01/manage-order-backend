@@ -49,10 +49,30 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.SetEnvironmentVariable("SEED_ADMIN_EMAIL", string.Empty);
         Environment.SetEnvironmentVariable("SEED_ADMIN_PASSWORD", string.Empty);
 
-        // Never let a developer's real API key turn the suite into a billed network call. With a key
-        // present the draft-from-message endpoint would contact Anthropic for real: slow, flaky,
-        // chargeable, and it would silently invert the "no provider configured" test.
-        Environment.SetEnvironmentVariable("Claude__ApiKey", string.Empty);
+        /*
+         * Never let a developer's real credentials turn the suite into live network calls.
+         *
+         * With these present the suite would bill an AI provider, send real password-reset email to
+         * real inboxes, and write test uploads into the production bucket - and each one silently
+         * inverts its own "no provider configured" test.
+         *
+         * Both spellings of every name: the friendly one that EnvironmentVariableMappings reads from
+         * .env, and the double-underscore one that AddEnvironmentVariables reads and which takes
+         * precedence over it. Clearing only one leaves the other live.
+         */
+        foreach (var name in new[]
+        {
+            "Claude__ApiKey", "CLAUDE_API_KEY",
+            "Email__ApiKey", "EMAIL_API_KEY",
+            "Email__FromAddress", "EMAIL_FROM_ADDRESS",
+        })
+        {
+            Environment.SetEnvironmentVariable(name, string.Empty);
+        }
+
+        // Uploads go to a throwaway folder on disk, never to the real bucket.
+        Environment.SetEnvironmentVariable("FILE_STORAGE_PROVIDER", "LocalDisk");
+        Environment.SetEnvironmentVariable("FileStorage__Provider", "LocalDisk");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -71,6 +91,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 ["PlatformBranding:ProjectShortName"] = "DMO",
                 ["Seed:AdminEmail"] = null,
                 ["Claude:ApiKey"] = null,
+                ["Email:ApiKey"] = null,
+                ["Email:FromAddress"] = null,
+                ["FileStorage:Provider"] = "LocalDisk",
                 ["Seed:AdminPassword"] = null,
 
                 // TestServer gives every request a null remote address, so the whole suite shares one

@@ -79,6 +79,15 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
                 Key = storageKey,
                 InputStream = content,
                 ContentType = contentType,
+
+                /*
+                 * The SDK closes InputStream when it is done, which would be this provider reaching
+                 * back and disposing a buffer its caller still owns. The local provider does not do
+                 * that, so a handler that works on disk would break the moment storage was switched
+                 * - which is exactly what happened the first time this ran against a real bucket.
+                 */
+                AutoCloseStream = false,
+
                 DisablePayloadSigning = _options.S3DisablePayloadSigning,
                 Headers =
                 {

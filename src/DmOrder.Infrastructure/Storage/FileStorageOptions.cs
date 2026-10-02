@@ -45,12 +45,15 @@ public sealed class FileStorageOptions
     /// <summary>
     /// Sends the body without a streaming SHA-256 payload signature.
     ///
-    /// Needed by some S3-compatible services that do not implement
-    /// <c>STREAMING-AWS4-HMAC-SHA256-PAYLOAD</c>. The request is still signed and still travels over
-    /// TLS; only the per-chunk body hash is skipped. Left off by default - turn it on only if
-    /// uploads fail with a signature error.
+    /// **On by default, because R2 requires it.** The AWS SDK v4 signs uploads with
+    /// <c>STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER</c>, which Cloudflare has not implemented -
+    /// every upload fails with exactly that message. Verified against a real bucket.
+    ///
+    /// The request is still signed with SigV4 and still travels over TLS; what is skipped is the
+    /// per-chunk body hash, which protects against an in-transit body swap that TLS already
+    /// prevents. Safe on real S3 too, so one default serves both.
     /// </summary>
-    public bool S3DisablePayloadSigning { get; set; }
+    public bool S3DisablePayloadSigning { get; set; } = true;
 
     public bool UsesS3 => string.Equals(Provider, "S3", StringComparison.OrdinalIgnoreCase);
 
