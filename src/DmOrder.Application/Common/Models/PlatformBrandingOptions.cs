@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DmOrder.Api.Configuration;
+namespace DmOrder.Application.Common.Models;
 
 /// <summary>
 /// The SaaS product's own branding — never a seller's. Seller branding lives on the Store entity and is
@@ -8,6 +8,10 @@ namespace DmOrder.Api.Configuration;
 ///
 /// Everything here comes from configuration so renaming the product is an environment change,
 /// not a code change.
+///
+/// Lives in Application rather than Api because it is product identity, not web configuration:
+/// the password-reset email needs the product name and the platform URL, and a handler must not
+/// have to reach up into the web layer for them.
 /// </summary>
 public sealed class PlatformBrandingOptions
 {

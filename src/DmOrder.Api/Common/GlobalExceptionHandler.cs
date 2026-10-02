@@ -1,4 +1,5 @@
 using DmOrder.Application.Common.Exceptions;
+using DmOrder.Application.Common.Interfaces;
 using DmOrder.Application.Features.Billing;
 using DmOrder.Application.Features.Orders;
 using DmOrder.Domain.Exceptions;
@@ -87,6 +88,13 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         // 503, not 500: no AI provider configured is a deployment fact, not a fault. The dashboard
         // hides the button when it knows, and this is the answer if it asks anyway.
+        // Same shape: the deployment has not switched this on. Nothing is broken.
+        EmailSenderNotConfiguredException => Problem(
+            StatusCodes.Status503ServiceUnavailable,
+            "Not available.",
+            "Password reset by email is not switched on yet. Please contact support.",
+            httpContext),
+
         OrderMessageReaderNotConfiguredException => Problem(
             StatusCodes.Status503ServiceUnavailable,
             "Not available.",

@@ -1,4 +1,5 @@
 using DmOrder.Api.Configuration;
+using DmOrder.Application.Common.Models;
 using Microsoft.Extensions.Options;
 
 namespace DmOrder.Api.Endpoints;

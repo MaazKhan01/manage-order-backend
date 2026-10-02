@@ -111,6 +111,57 @@ public sealed class UserAccountService(
         return user is null || !user.IsActive ? null : await ToAuthenticatedUserAsync(user);
     }
 
+    public async Task<PasswordResetRequest?> CreatePasswordResetTokenAsync(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await userManager.FindByEmailAsync(email);
+
+        // A deactivated account gets no reset either - it would be a way back in past a suspension.
+        if (user is null || !user.IsActive) return null;
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+
+        return new PasswordResetRequest(user.Id, user.Email!, user.DisplayName, token);
+    }
+
+    public async Task<PasswordResetResult> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+
+        // An unknown or suspended account is reported exactly as a bad token. Anything else would
+        // turn this endpoint into a way of testing which addresses are registered.
+        if (user is null || !user.IsActive) return new PasswordResetResult(PasswordResetOutcome.InvalidToken, null);
+
+        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+
+        if (!result.Succeeded)
+        {
+            return new PasswordResetResult(
+                result.Errors.Any(e => e.Code.Contains("Token", StringComparison.OrdinalIgnoreCase))
+                    ? PasswordResetOutcome.InvalidToken
+                    : PasswordResetOutcome.WeakPassword,
+                null);
+        }
+
+        // The stamp is what makes the used token - and any other outstanding one - stop working.
+        await userManager.UpdateSecurityStampAsync(user);
+
+        // Lockout is cleared: being locked out by an attacker's failed guesses must not outlive
+        // the reset that was prompted by them. Revoking the other sessions happens in the handler -
+        // TokenService already depends on this service, so taking it as a dependency here would
+        // close a cycle the container refuses to build.
+        await userManager.ResetAccessFailedCountAsync(user);
+
+        return new PasswordResetResult(PasswordResetOutcome.Succeeded, user.Id);
+    }
+
     private async Task<AuthenticatedUser> ToAuthenticatedUserAsync(ApplicationUser user)
     {
         var roles = await userManager.GetRolesAsync(user);

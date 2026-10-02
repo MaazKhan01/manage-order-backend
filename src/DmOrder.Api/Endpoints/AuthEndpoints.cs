@@ -16,6 +16,39 @@ public static class AuthEndpoints
             .RequireRateLimiting(RateLimitPolicies.Auth)
             .WithTags("Auth");
 
+        // Both sit under the Auth rate-limit policy with login and register. Reset is a credential
+        // operation and attracts the same attention: an unlimited forgot-password endpoint is a free
+        // way to send mail from our domain to anyone, which is how a sending reputation is lost.
+        auth.MapPost("/forgot-password", async (
+                ForgotPasswordRequest request,
+                ForgotPasswordHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                await handler.HandleAsync(request, cancellationToken);
+
+                // Deliberately identical whether or not the account exists, and whether or not the
+                // mail was actually sent. See ForgotPasswordHandler.
+                return Results.Accepted();
+            })
+            .WithValidation<ForgotPasswordRequest>()
+            .WithName("ForgotPassword")
+            .WithSummary(
+                "Ask for a password reset link. Always reports the same result, so this cannot be "
+                + "used to discover which addresses have accounts.");
+
+        auth.MapPost("/reset-password", async (
+                ResetPasswordRequest request,
+                ResetPasswordHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                await handler.HandleAsync(request, cancellationToken);
+                return Results.NoContent();
+            })
+            .WithValidation<ResetPasswordRequest>()
+            .WithName("ResetPassword")
+            .WithSummary(
+                "Set a new password from a reset link. Ends every session that was open before it.");
+
         auth.MapPost("/register", async (
                 RegisterRequest request,
                 RegisterHandler handler,

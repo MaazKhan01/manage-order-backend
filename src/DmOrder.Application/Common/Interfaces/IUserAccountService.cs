@@ -26,4 +26,45 @@ public interface IUserAccountService
 
     /// <summary>Returns the user, or null if they no longer exist or have been deactivated.</summary>
     Task<AuthenticatedUser?> FindActiveByIdAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A single-use reset token for the address, or null if no active account has it.
+    ///
+    /// The null is for the caller's own use in deciding whether to send a mail - it must never
+    /// reach the response, because "no account" and "account exists" have to look identical from
+    /// outside.
+    /// </summary>
+    Task<PasswordResetRequest?> CreatePasswordResetTokenAsync(
+        string email,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Sets a new password if the token is valid for the address.
+    ///
+    /// On success the user id comes back so the caller can revoke their other sessions - the usual
+    /// reason someone resets a password is that somebody else has it, and a reset that leaves the
+    /// intruder's refresh token working has achieved nothing.
+    /// </summary>
+    Task<PasswordResetResult> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken);
+}
+
+public sealed record PasswordResetRequest(Guid UserId, string Email, string DisplayName, string Token);
+
+/// <param name="UserId">Set only on success, so the caller can end that user's other sessions.</param>
+public sealed record PasswordResetResult(PasswordResetOutcome Outcome, Guid? UserId);
+
+public enum PasswordResetOutcome
+{
+    /// <summary>Password changed and every existing session revoked.</summary>
+    Succeeded,
+
+    /// <summary>Wrong, expired, or already used. Reported as one thing so neither can be probed.</summary>
+    InvalidToken,
+
+    /// <summary>The new password failed the identity rules.</summary>
+    WeakPassword,
 }

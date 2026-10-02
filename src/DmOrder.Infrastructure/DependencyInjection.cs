@@ -2,6 +2,7 @@ using DmOrder.Application.Common.Interfaces;
 using DmOrder.Domain.Identity;
 using DmOrder.Infrastructure.Ai;
 using DmOrder.Infrastructure.Billing;
+using DmOrder.Infrastructure.Email;
 using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Orders;
 using DmOrder.Infrastructure.Persistence;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         AddFileStorage(services, configuration);
 
         AddAi(services, configuration);
+        AddEmail(services, configuration);
 
         return services;
     }
@@ -82,7 +84,16 @@ public static class DependencyInjection
                 options.Lockout.AllowedForNewUsers = true;
             })
             .AddRoles<ApplicationRole>()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            // Required for password reset tokens. Without it GeneratePasswordResetTokenAsync throws
+            // at the moment a locked-out seller needs it most.
+            .AddDefaultTokenProviders();
+
+        // Two hours, not Identity's default day. The link is a bearer credential sitting in an
+        // inbox; long enough to find the mail and act on it, short enough that an old one found
+        // later is worthless.
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+            options.TokenLifespan = TimeSpan.FromHours(2));
 
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<ITokenService, TokenService>();
@@ -128,6 +139,41 @@ public static class DependencyInjection
             // Development only. An ephemeral host wipes this on every deploy, which is why the
             // deployment checklist switches the provider before the first real release.
             services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+        }
+    }
+
+    /// <summary>
+    /// Transactional email - in practice, password reset and nothing else yet.
+    ///
+    /// An unset key selects the not-configured sender rather than failing at startup, so the rest of
+    /// the product runs without it. Password reset is the one thing that then reports itself
+    /// unavailable, which is honest: a reset flow that silently sends nothing is worse than one that
+    /// says it is switched off.
+    /// </summary>
+    private static void AddEmail(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(EmailOptions.SectionName);
+
+        services.AddOptions<EmailOptions>()
+            .Bind(section)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var configured = !string.IsNullOrWhiteSpace(section[nameof(EmailOptions.ApiKey)])
+            && !string.IsNullOrWhiteSpace(section[nameof(EmailOptions.FromAddress)]);
+
+        if (configured)
+        {
+            services.AddHttpClient<IEmailSender, ResendEmailSender>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.resend.com/");
+                // A locked-out seller is waiting on this request; failing fast beats holding it open.
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, NotConfiguredEmailSender>();
         }
     }
 

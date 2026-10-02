@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using DmOrder.Application.Common.Models;
 using DmOrder.Api.Common;
 using DmOrder.Api.Configuration;
 using DmOrder.Api.Endpoints;
