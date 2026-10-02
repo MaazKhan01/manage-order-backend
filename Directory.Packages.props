@@ -7,6 +7,9 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
+  <ItemGroup Label="Storage">
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.1" />
+  </ItemGroup>
   <ItemGroup Label="AI">
     <PackageVersion Include="Anthropic" Version="12.50.0" />
   </ItemGroup>

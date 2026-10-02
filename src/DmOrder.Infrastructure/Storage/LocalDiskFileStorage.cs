@@ -21,7 +21,7 @@ public sealed class LocalDiskFileStorage(IOptions<FileStorageOptions> options) :
         string keyPrefix,
         CancellationToken cancellationToken)
     {
-        var storageKey = BuildStorageKey(keyPrefix, fileName);
+        var storageKey = StorageKeys.Build(keyPrefix, fileName);
         var fullPath = ResolvePath(storageKey);
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
@@ -52,17 +52,6 @@ public sealed class LocalDiskFileStorage(IOptions<FileStorageOptions> options) :
 
     public string GetPublicUrl(string storageKey) =>
         $"{_options.PublicBaseUrl.TrimEnd('/')}/{storageKey}";
-
-    private static string BuildStorageKey(string keyPrefix, string fileName)
-    {
-        var extension = Path.GetExtension(fileName);
-        var safeExtension = string.IsNullOrWhiteSpace(extension) ? string.Empty : extension.ToLowerInvariant();
-        var prefix = keyPrefix.Trim('/');
-
-        // The stored name is generated, never taken from the upload, so a hostile filename cannot
-        // influence the path or the served content type.
-        return $"{prefix}/{Guid.CreateVersion7():n}{safeExtension}";
-    }
 
     private string ResolvePath(string storageKey)
     {

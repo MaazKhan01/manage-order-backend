@@ -1,7 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <!-- Storage key rules are internal but security-relevant, so the suite can reach them. -->
+    <InternalsVisibleTo Include="DmOrder.Api.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Anthropic" />
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />

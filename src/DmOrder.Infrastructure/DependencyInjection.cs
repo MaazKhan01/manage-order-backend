@@ -110,11 +110,25 @@ public static class DependencyInjection
         services.AddOptions<FileStorageOptions>()
             .Bind(configuration.GetSection(FileStorageOptions.SectionName))
             .ValidateDataAnnotations()
+            // A half-configured bucket fails at startup rather than on a seller's first upload.
+            .Validate(
+                options => !options.ValidateS3().Any(),
+                "FileStorage is set to the S3 provider but is missing required settings. "
+                + "See FileStorageOptions.ValidateS3 for which.")
             .ValidateOnStart();
 
-        // Only the local provider exists today. The S3-compatible implementation is added in the
-        // deployment phase and selected here by FileStorage:Provider.
-        services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+        var provider = configuration[$"{FileStorageOptions.SectionName}:Provider"];
+
+        if (string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IFileStorage, S3FileStorage>();
+        }
+        else
+        {
+            // Development only. An ephemeral host wipes this on every deploy, which is why the
+            // deployment checklist switches the provider before the first real release.
+            services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+        }
     }
 
     /// <summary>
