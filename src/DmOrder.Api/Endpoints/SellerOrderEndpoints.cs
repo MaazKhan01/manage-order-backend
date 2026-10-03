@@ -1,4 +1,5 @@
 using DmOrder.Api.Common;
+using DmOrder.Application.Common.Interfaces;
 using DmOrder.Application.Features.Orders;
 using DmOrder.Domain.Orders;
 
@@ -50,6 +51,34 @@ public static class SellerOrderEndpoints
             .WithSummary(
                 "Read a pasted customer message into a draft order. Creates nothing - the seller "
                 + "reviews the draft and submits it through the ordinary create-order endpoint.");
+
+        orders.MapGet("/export", async (
+                OrderStatus? status,
+                string? search,
+                ExportOrdersHandler handler,
+                ISpreadsheetWriter spreadsheets,
+                IDateTimeProvider clock,
+                CancellationToken cancellationToken) =>
+            {
+                var data = await handler.HandleAsync(
+                    new OrderExportRequest(status, search), cancellationToken);
+
+                var bytes = spreadsheets.Write(data.StoreName, data.Headers, data.Rows);
+
+                // Dated, so a seller downloading weekly ends up with a folder of distinct files
+                // rather than orders(3).xlsx. Slug-safe because the store name reaches this.
+                var stamp = clock.UtcNow.ToString("yyyy-MM-dd");
+                var name = $"orders-{stamp}.xlsx";
+
+                return Results.File(
+                    bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    name);
+            })
+            .WithName("ExportOrders")
+            .WithSummary(
+                "Every order as a spreadsheet, one column per question the seller asks. "
+                + "Honours the same status and search filters as the list.");
 
         orders.MapGet("/counts", async (GetOrderCountsHandler handler, CancellationToken cancellationToken) =>
                 Results.Ok(await handler.HandleAsync(cancellationToken)))

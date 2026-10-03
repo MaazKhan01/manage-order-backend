@@ -43,6 +43,17 @@ public interface IUserDirectory
     Task<(int Total, int Active)> CountSellersAsync(CancellationToken cancellationToken);
 
     /// <summary>
+    /// Sellers who registered in the last week, and in the week before it.
+    /// 
+    /// Two adjacent windows rather than a series: at this size the only question a number can
+    /// honestly answer is "more or fewer than last week", and that needs exactly two.
+    /// </summary>
+    Task<(int ThisWeek, int PreviousWeek)> CountSignupsAsync(
+        DateTimeOffset weekAgo,
+        DateTimeOffset twoWeeksAgo,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Suspends or restores a seller account. A suspended account keeps its data but can no longer
     /// sign in or refresh a session.
     ///

@@ -15,7 +15,29 @@ public sealed record AdminStatsResponse(
     int SuspendedStores,
     int TotalProducts,
     int TotalOrders,
-    int OrdersLast30Days);
+    int OrdersLast30Days,
+
+    // --- Is the platform growing? ---
+    // Two adjacent weeks rather than a trend line: the only question a number can honestly answer
+    // at this size is "more or fewer than last week", and that needs exactly two numbers.
+    int NewSellersThisWeek,
+    int NewSellersPreviousWeek,
+
+    // --- Where the money is, or is not ---
+    // Computed against the clock, not read from the status column: a row still marked Trialing whose
+    // trial end has passed is an expired trial, and counting it as active would flatter the number
+    // that matters most.
+    int Trialing,
+    int PaidSubscriptions,
+    int ExpiredTrials,
+    /// <summary>Trials ending within a week. The only genuinely time-sensitive number here.</summary>
+    int TrialsEndingSoon,
+
+    // --- Sellers who got stuck ---
+    /// <summary>A store with no products is someone who signed up and stopped.</summary>
+    int StoresWithNoProducts,
+    /// <summary>Live, reachable, and nobody has ever ordered. The shop works; the traffic does not.</summary>
+    int LiveStoresWithNoOrders);
 
 /// <summary>A store as the admin lists it. Carries its owner, because that is who gets contacted.</summary>
 public sealed record AdminStoreListItemResponse(

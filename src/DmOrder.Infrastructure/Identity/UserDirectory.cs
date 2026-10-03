@@ -89,6 +89,23 @@ public sealed class UserDirectory(AppDbContext db) : IUserDirectory
         return (total, active);
     }
 
+    public async Task<(int ThisWeek, int PreviousWeek)> CountSignupsAsync(
+        DateTimeOffset weekAgo,
+        DateTimeOffset twoWeeksAgo,
+        CancellationToken cancellationToken)
+    {
+        var sellers = db.Users.AsNoTracking().Where(u => SellerUserIds.Contains(u.Id));
+
+        var thisWeek = await sellers.CountAsync(u => u.CreatedAt >= weekAgo, cancellationToken);
+
+        // Strictly the week before, not a rolling fortnight - otherwise the comparison includes
+        // this week's signups and always looks like growth.
+        var previousWeek = await sellers.CountAsync(
+            u => u.CreatedAt >= twoWeeksAgo && u.CreatedAt < weekAgo, cancellationToken);
+
+        return (thisWeek, previousWeek);
+    }
+
     public async Task SetSellerActiveAsync(Guid userId, bool isActive, CancellationToken cancellationToken)
     {
         // Tracked, because this one writes.

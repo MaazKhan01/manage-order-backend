@@ -7,6 +7,7 @@ using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Media;
 using DmOrder.Infrastructure.Orders;
 using DmOrder.Infrastructure.Persistence;
+using DmOrder.Infrastructure.Spreadsheets;
 using DmOrder.Infrastructure.Phones;
 using DmOrder.Infrastructure.Persistence.Interceptors;
 using DmOrder.Infrastructure.Services;
@@ -41,6 +42,9 @@ public static class DependencyInjection
         // Not optional and not configurable away: an image that is not re-encoded is an image whose
         // EXIF - including GPS - would be published as uploaded.
         services.AddSingleton<IImageOptimizer, SkiaImageOptimizer>();
+
+        // Stateless, so one instance serves every export.
+        services.AddSingleton<ISpreadsheetWriter, ClosedXmlSpreadsheetWriter>();
 
         return services;
     }

@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Anthropic" />
     <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="ClosedXML" />
     <PackageReference Include="SkiaSharp" />
     <!-- The native Skia binary for Linux containers; the Windows one comes in with SkiaSharp. -->
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
