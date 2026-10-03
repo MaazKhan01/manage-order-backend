@@ -1,0 +1,85 @@
+# Render blueprint for the Ordviz API.
+#
+# Infrastructure as a file rather than a dashboard someone has to remember configuring. Render reads
+# this on deploy; anything marked `sync: false` it asks you for once and then keeps, which is how the
+# secrets stay out of this repository.
+#
+# Region note: this asks for Singapore because the database is in Singapore, and the API-to-database
+# hop is the latency that actually matters - a server-rendered storefront page makes several
+# sequential queries. If the free plan cannot use this region, the deploy will say so, and the
+# honest choice is then between a slower product and a paid plan, not between regions.
+
+services:
+  - type: web
+    name: ordviz-api
+    runtime: docker
+    plan: free
+    region: singapore
+
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    # The shallow check. /health/ready also tests the database, which is deliberately not what a
+    # platform should restart on: a database blip should not kill a healthy API.
+    healthCheckPath: /health
+
+    envVars:
+      # Render's free plan has no pre-deploy hook, so the schema is applied as the app starts.
+      # On any plan with a pre-deploy command, use that instead and set this to false.
+      - key: RUN_MIGRATIONS_ON_STARTUP
+        value: true
+
+      # Render terminates TLS at its proxy, so without this every request looks like plain HTTP
+      # from a single address - which would also collapse the whole world into one rate-limit bucket.
+      - key: TRUST_FORWARDED_HEADERS
+        value: true
+
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      - key: PROJECT_NAME
+        value: Ordviz
+      - key: PROJECT_SHORT_NAME
+        value: Ordviz
+      - key: ORDER_REFERENCE_PREFIX
+        value: OV
+      - key: SUPPORT_EMAIL
+        value: hello@ordviz.com
+
+      # --- Everything below is entered in Render's dashboard, once, and never committed ---
+
+      # Neon, POOLED host, in Npgsql key-value form - not the postgresql:// URI Neon shows you.
+      - key: DATABASE_CONNECTION_STRING
+        sync: false
+
+      # Minimum 32 characters. Generate a fresh one for production; never reuse the local value.
+      - key: JWT_SECRET
+        sync: false
+
+      - key: PLATFORM_URL
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+
+      - key: FILE_STORAGE_PROVIDER
+        value: S3
+      - key: OBJECT_STORAGE_ENDPOINT
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_ACCESS_KEY
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_KEY
+        sync: false
+      - key: FILE_STORAGE_PUBLIC_BASE_URL
+        sync: false
+
+      - key: CLAUDE_API_KEY
+        sync: false
+
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Ordviz

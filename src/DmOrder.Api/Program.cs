@@ -10,6 +10,7 @@ using DmOrder.Infrastructure;
 using DmOrder.Infrastructure.Identity;
 using DmOrder.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
 using Scalar.AspNetCore;
 using Serilog;
@@ -17,6 +18,21 @@ using Serilog;
 // A local .env (never committed) is loaded before the host is built so it can supply configuration
 // the same way the frontend is configured. Real environments set real environment variables.
 DotEnvLoader.Load(Directory.GetCurrentDirectory());
+
+/*
+ * Render, Railway, Cloud Run and Heroku all tell a container which port to listen on through PORT.
+ * ASP.NET Core only reads ASPNETCORE_URLS, so without this the app binds its own default, the host
+ * health-checks a port nothing is listening on, and the deploy is marked failed with the
+ * application itself perfectly healthy.
+ *
+ * Only applied when ASPNETCORE_URLS is not already set, so an explicit --urls still wins locally.
+ */
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port)
+    && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{port}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -110,6 +126,26 @@ var app = builder.Build();
 // SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are supplied — there is no default admin password.
 await using (var scope = app.Services.CreateAsyncScope())
 {
+    /*
+     * Migrations on boot, opt-in.
+     *
+     * Normally the wrong place for them: migrations are a deploy step, and running them from the
+     * application means every instance races to apply the same schema change. It is here because
+     * some hosts - Render's free tier among them - give you no pre-deploy hook at all, and the
+     * alternative is applying them by hand from a laptop before every release, which is the kind of
+     * step that gets skipped.
+     *
+     * Off by default, so nobody gets this behaviour without choosing it. EF takes an advisory lock,
+     * so a second instance waits rather than corrupting anything - but on a plan with a real
+     * pre-deploy command, use that instead and leave this unset.
+     */
+    if (builder.Configuration.GetValue<bool>("RunMigrationsOnStartup"))
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        app.Logger.LogInformation("Applying database migrations on startup.");
+        await db.Database.MigrateAsync();
+    }
+
     var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
     await seeder.SeedAsync(
         builder.Configuration["Seed:AdminEmail"],
